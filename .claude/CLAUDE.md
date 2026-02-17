@@ -1,5 +1,5 @@
 ﻿<!-- DO NOT EDIT -- managed by sync.ps1 from claude-team-config -->
-<!-- Synced: 2026-02-17 23:04:34 -->
+<!-- Synced: 2026-02-17 23:43:35 -->
 <!-- Base: base/CLAUDE.md | Overlay: overlays/vibing-steampunk.md -->
 
 
@@ -39,6 +39,61 @@ Before implementing solutions or suggesting approaches:
   3. Update these instructions to reference the new agent
 - **Parallel execution** - Run independent tasks in parallel using multiple tool calls in a single message
 - **Agent collaboration** - Agents may request help from other specialists via the NEEDS ASSISTANCE protocol. The orchestrator (or main context) handles chaining.
+
+## Automatic Task Routing (MANDATORY)
+
+Before starting ANY implementation, assess the task and route it automatically. Users should NOT need to type `/orchestrate` or agent names — the system must select the right workflow on its own.
+
+### Assessment criteria
+
+Evaluate every incoming task against these signals:
+
+| Signal | Threshold | Route to |
+|--------|-----------|----------|
+| Files affected | >3 files | Pipeline or agents |
+| Architecture change | Any (new component, API, data model) | `architect` agent → pipeline |
+| Security surface | Auth, input validation, crypto, secrets | `security-lead` agent |
+| Bug complexity | Multi-component, race condition, data corruption | `/orchestrate bugfix` pipeline |
+| New feature | Any user-facing feature | `/orchestrate feature` pipeline |
+| Code review request | Any PR or diff review | `code-reviewer` agent (triggers L1 CV) |
+| Audit request | Plan review, risk assessment | `lead-auditor` agent (triggers L1 CV) |
+| Deployment | Any release, deploy, migration | `/orchestrate deploy` pipeline |
+
+### Routing decision tree
+
+```
+User request arrives
+       │
+  Is it a question / exploration / reading only?
+       │
+  ┌────┴────┐
+ YES        NO (implementation needed)
+  │         │
+  ▼         ▼
+Answer    Assess scope:
+directly  │
+          ├─ Single file, cosmetic/trivial fix? → Implement directly
+          │
+          ├─ Single file, logic/security change? → Use relevant agent
+          │    (code-reviewer, security-lead, architect)
+          │    Agent's L1 CV Protocol activates automatically
+          │
+          ├─ Multiple files, one concern? → Use relevant agent(s)
+          │    Launch agents in sequence, pass context between them
+          │    L1 CV activates in each CV-enabled agent
+          │
+          └─ Multiple files, multiple concerns? → Use /orchestrate pipeline
+               Select pipeline type: feature / bugfix / deploy / qa / review
+               L1 + L2 (CV-Gates) + L3 (if disputes) all activate automatically
+```
+
+### Rules
+
+- **When in doubt, use agents.** Over-checking wastes some tokens. Under-checking risks shipping bad code. Err toward agents.
+- **Never ask the user "should I use an agent?"** — decide based on the criteria above and proceed.
+- **Announce routing briefly** — tell the user which route was chosen and why, in one line. Example: "This touches auth + 4 files → using feature pipeline with security-lead."
+- **Single-file trivial changes** are the ONLY case where direct implementation without agents is acceptable. Examples: typo fix, comment update, adding a log line, formatting.
+- **If during implementation you discover the task is more complex than initially assessed** — stop, re-route to a heavier workflow. Do not continue with a light workflow for a heavy task.
 
 ## Permissions
 
