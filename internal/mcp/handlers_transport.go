@@ -186,9 +186,7 @@ func (s *Server) handleListTransports(ctx context.Context, request mcp.CallToolR
 		return newToolResultError(fmt.Sprintf("ListTransports failed: %v", err)), nil
 	}
 
-	if len(transports) == 0 {
-		return mcp.NewToolResultText("No modifiable transports found."), nil
-	}
+	// Removed the empty check - let ListTransports handle it
 
 	jsonBytes, err := json.MarshalIndent(transports, "", "  ")
 	if err != nil {

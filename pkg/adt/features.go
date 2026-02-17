@@ -27,6 +27,8 @@ const (
 	FeatureTransport FeatureID = "transport"
 	// FeatureHANA indicates HANA database (required for some AMDP features)
 	FeatureHANA FeatureID = "hana"
+	// FeatureSourceSearch indicates SRIS fulltext source search is available
+	FeatureSourceSearch FeatureID = "sourcesearch"
 )
 
 // FeatureMode controls how a feature is enabled
@@ -62,16 +64,19 @@ type FeatureConfig struct {
 	UI5 FeatureMode
 	// Transport controls CTS transport tools (default: auto)
 	Transport FeatureMode
+	// SourceSearch controls SRIS fulltext source search (default: auto)
+	SourceSearch FeatureMode
 }
 
 // DefaultFeatureConfig returns default feature configuration (all auto-detect)
 func DefaultFeatureConfig() FeatureConfig {
 	return FeatureConfig{
-		AbapGit:   FeatureModeAuto,
-		RAP:       FeatureModeAuto,
-		AMDP:      FeatureModeAuto,
-		UI5:       FeatureModeAuto,
-		Transport: FeatureModeAuto,
+		AbapGit:      FeatureModeAuto,
+		RAP:          FeatureModeAuto,
+		AMDP:         FeatureModeAuto,
+		UI5:          FeatureModeAuto,
+		Transport:    FeatureModeAuto,
+		SourceSearch: FeatureModeAuto,
 	}
 }
 
@@ -88,6 +93,8 @@ func (f *FeatureConfig) GetMode(id FeatureID) FeatureMode {
 		return f.UI5
 	case FeatureTransport:
 		return f.Transport
+	case FeatureSourceSearch:
+		return f.SourceSearch
 	default:
 		return FeatureModeAuto
 	}
@@ -115,12 +122,13 @@ func NewFeatureProber(client *Client, config FeatureConfig, verbose bool) *Featu
 // ProbeAll probes all features and returns their status
 func (p *FeatureProber) ProbeAll(ctx context.Context) map[FeatureID]*FeatureStatus {
 	features := []FeatureID{
-		FeatureHANA,     // Probe first - other features may depend on it
+		FeatureHANA,         // Probe first - other features may depend on it
 		FeatureAbapGit,
 		FeatureRAP,
 		FeatureAMDP,
 		FeatureUI5,
 		FeatureTransport,
+		FeatureSourceSearch, // Requires HANA
 	}
 
 	results := make(map[FeatureID]*FeatureStatus)
@@ -209,6 +217,8 @@ func (p *FeatureProber) probeFeature(ctx context.Context, id FeatureID) *Feature
 		status.Available, status.Message, err = p.probeUI5(ctx)
 	case FeatureTransport:
 		status.Available, status.Message, err = p.probeTransport(ctx)
+	case FeatureSourceSearch:
+		status.Available, status.Message, err = p.probeSourceSearch(ctx)
 	default:
 		status.Available = false
 		status.Message = "unknown feature"
@@ -350,12 +360,39 @@ func (p *FeatureProber) probeTransport(ctx context.Context) (bool, string, error
 	return false, "CTS not responding", nil
 }
 
+// probeSourceSearch checks if SRIS fulltext source search is available
+func (p *FeatureProber) probeSourceSearch(ctx context.Context) (bool, string, error) {
+	// Try a minimal search query to see if textsearch actually works
+	// This is more reliable than OPTIONS request or HANA detection
+	resp, err := p.client.transport.Request(ctx, "/sap/bc/adt/repository/informationsystem/textsearch?searchString=ZZZZ_PROBE_TEST&maxResults=1", &RequestOptions{
+		Method: http.MethodGet,
+		Accept: "application/xml",
+	})
+	if err != nil {
+		errStr := err.Error()
+		if strings.Contains(errStr, "404") || strings.Contains(errStr, "501") {
+			return false, "SRIS textsearch endpoint not available (activate SRIS_SOURCE_SEARCH via SFW5)", nil
+		}
+		if strings.Contains(errStr, "400") {
+			return false, "SRIS textsearch endpoint returned error (may need configuration)", nil
+		}
+		return false, "", err
+	}
+
+	// 200 with XML response means SRIS is working
+	if resp.StatusCode == 200 {
+		return true, "SRIS source search available", nil
+	}
+
+	return false, fmt.Sprintf("SRIS textsearch returned status %d", resp.StatusCode), nil
+}
+
 // FeatureSummary returns a human-readable summary of all features
 func (p *FeatureProber) FeatureSummary(ctx context.Context) string {
 	results := p.ProbeAll(ctx)
 	var parts []string
 
-	features := []FeatureID{FeatureHANA, FeatureAbapGit, FeatureRAP, FeatureAMDP, FeatureUI5, FeatureTransport}
+	features := []FeatureID{FeatureHANA, FeatureAbapGit, FeatureRAP, FeatureAMDP, FeatureUI5, FeatureTransport, FeatureSourceSearch}
 	for _, id := range features {
 		status := results[id]
 		symbol := "✗"

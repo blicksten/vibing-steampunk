@@ -31,3 +31,73 @@ func (s *Server) handleSearchObject(ctx context.Context, request mcp.CallToolReq
 	output, _ := json.MarshalIndent(results, "", "  ")
 	return mcp.NewToolResultText(string(output)), nil
 }
+
+// handleSourceSearch handles SRIS fulltext source search requests.
+// This provides server-side search using HANA fulltext index, much faster than GrepPackages.
+func (s *Server) handleSourceSearch(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	query, ok := request.Params.Arguments["query"].(string)
+	if !ok || query == "" {
+		return newToolResultError("query is required"), nil
+	}
+
+	maxResults := 100
+	if mr, ok := request.Params.Arguments["max_results"].(float64); ok && mr > 0 {
+		maxResults = int(mr)
+	}
+
+	var objectTypes []string
+	if ot, ok := request.Params.Arguments["object_types"].([]interface{}); ok {
+		for _, v := range ot {
+			if s, ok := v.(string); ok {
+				objectTypes = append(objectTypes, s)
+			}
+		}
+	}
+
+	var packageNames []string
+	if pn, ok := request.Params.Arguments["packages"].([]interface{}); ok {
+		for _, v := range pn {
+			if s, ok := v.(string); ok {
+				packageNames = append(packageNames, s)
+			}
+		}
+	}
+
+	results, err := s.adtClient.SourceSearch(ctx, query, maxResults, objectTypes, packageNames)
+	if err != nil {
+		// Provide helpful error message if feature not available
+		errMsg := err.Error()
+		if contains404or501(errMsg) {
+			return newToolResultError(
+				"SourceSearch not available. SRIS may not be configured on this system. " +
+					"Use GrepPackages as fallback, or activate SRIS_SOURCE_SEARCH business function via SFW5 " +
+					"and run SRIS_CODE_SEARCH_PREPARATION to create the index."), nil
+		}
+		return newToolResultError(fmt.Sprintf("Source search failed: %v", err)), nil
+	}
+
+	output, _ := json.MarshalIndent(results, "", "  ")
+	return mcp.NewToolResultText(string(output)), nil
+}
+
+// contains404or501 checks if error message indicates feature not available
+func contains404or501(errMsg string) bool {
+	return len(errMsg) > 0 && (
+		errMsg[0] == '4' || errMsg[0] == '5' ||
+		contains(errMsg, "404") || contains(errMsg, "501") ||
+		contains(errMsg, "Not Found") || contains(errMsg, "Not Implemented"))
+}
+
+// contains is a simple substring check
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
+}
+
+func containsHelper(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

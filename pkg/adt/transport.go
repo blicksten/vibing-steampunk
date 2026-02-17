@@ -69,15 +69,41 @@ func (c *Client) GetUserTransports(ctx context.Context, userName string) (*UserT
 
 	userName = strings.ToUpper(userName)
 
+	// Try with target parameter (systems may require explicit target specification)
+	query := map[string][]string{
+		"user": {userName},
+	}
+
 	resp, err := c.transport.Request(ctx, "/sap/bc/adt/cts/transportrequests", &RequestOptions{
-		Method: http.MethodGet,
-		Query:  map[string][]string{"user": {userName}, "targets": {"true"}},
+		Method:        http.MethodGet,
+		Query:         query,
+		Accept:        "application/vnd.sap.adt.transportorganizertree.v1+xml",
+		SkipSAPParams: true, // Only send user parameter, no sap-client/sap-language
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get user transports failed: %w", err)
 	}
 
-	return parseUserTransports(resp.Body)
+	result, err := parseUserTransports(resp.Body)
+	if err != nil {
+		// Include XML in error for debugging
+		xmlPreview := string(resp.Body)
+		if len(xmlPreview) > 1000 {
+			xmlPreview = xmlPreview[:1000] + "..."
+		}
+		return nil, fmt.Errorf("parsing user transports: %w\nXML received:\n%s", err, xmlPreview)
+	}
+
+	// DEBUG: If no results, include XML for analysis
+	if len(result.Workbench) == 0 && len(result.Customizing) == 0 {
+		xmlPreview := string(resp.Body)
+		if len(xmlPreview) > 2000 {
+			xmlPreview = xmlPreview[:2000] + "..."
+		}
+		return nil, fmt.Errorf("[DEBUG] no transports found for user %s.\nXML received:\n%s", userName, xmlPreview)
+	}
+
+	return result, nil
 }
 
 func parseUserTransports(data []byte) (*UserTransports, error) {
@@ -435,61 +461,84 @@ func (c *Client) ListTransports(ctx context.Context, user string) ([]TransportSu
 		user = c.config.Username
 	}
 
+	// Try without version in Accept header, and skip sap-client/sap-language
 	resp, err := c.transport.Request(ctx, "/sap/bc/adt/cts/transportrequests", &RequestOptions{
-		Method: http.MethodGet,
-		Query:  map[string][]string{"user": {strings.ToUpper(user)}},
-		Accept: "application/vnd.sap.adt.transportorganizertree.v1+xml",
+		Method:        http.MethodGet,
+		Query:         map[string][]string{"user": {strings.ToUpper(user)}},
+		Accept:        "*/*",
+		SkipSAPParams: true, // Only send user parameter
 	})
 	if err != nil {
 		return nil, fmt.Errorf("listing transports: %w", err)
 	}
 
-	return parseTransportList(resp.Body)
-}
-
-func parseTransportList(data []byte) ([]TransportSummary, error) {
-	// Strip namespace prefixes
-	xmlStr := string(data)
-	xmlStr = strings.ReplaceAll(xmlStr, "tm:", "")
-
-	type request struct {
-		Number      string `xml:"number,attr"`
-		Owner       string `xml:"owner,attr"`
-		Desc        string `xml:"desc,attr"`
-		Type        string `xml:"type,attr"`
-		Status      string `xml:"status,attr"`
-		StatusText  string `xml:"status_text,attr"`
-		Target      string `xml:"target,attr"`
-		TargetDesc  string `xml:"target_desc,attr"`
-		LastChanged string `xml:"lastchanged_timestamp,attr"`
-		Client      string `xml:"source_client,attr"`
-	}
-	type root struct {
-		Requests []request `xml:"request"`
+	// Parse the hierarchical transport tree
+	userTransports, err := parseUserTransports(resp.Body)
+	if err != nil {
+		// Include XML in error for debugging
+		xmlPreview := string(resp.Body)
+		if len(xmlPreview) > 500 {
+			xmlPreview = xmlPreview[:500] + "..."
+		}
+		return nil, fmt.Errorf("parsing user transports: %w\nXML received:\n%s", err, xmlPreview)
 	}
 
-	var resp root
-	if err := xml.Unmarshal([]byte(xmlStr), &resp); err != nil {
-		return nil, fmt.Errorf("parsing transport list: %w", err)
-	}
+	// Flatten to TransportSummary list
+	var result []TransportSummary
 
-	var transports []TransportSummary
-	for _, req := range resp.Requests {
-		transports = append(transports, TransportSummary{
+	// Add all workbench requests (removed status filter for debugging)
+	for _, req := range userTransports.Workbench {
+		result = append(result, TransportSummary{
 			Number:      req.Number,
 			Owner:       req.Owner,
-			Description: req.Desc,
-			Type:        req.Type,
+			Description: req.Description,
+			Type:        "K", // K=Workbench request
 			Status:      req.Status,
-			StatusText:  req.StatusText,
+			StatusText:  statusToText(req.Status),
 			Target:      req.Target,
-			TargetDesc:  req.TargetDesc,
-			ChangedAt:   req.LastChanged,
-			Client:      req.Client,
+			Client:      c.config.Client,
 		})
 	}
 
-	return transports, nil
+	// Add all customizing requests (removed status filter for debugging)
+	for _, req := range userTransports.Customizing {
+		result = append(result, TransportSummary{
+			Number:      req.Number,
+			Owner:       req.Owner,
+			Description: req.Description,
+			Type:        "W", // W=Customizing request
+			Status:      req.Status,
+			StatusText:  statusToText(req.Status),
+			Target:      req.Target,
+			Client:      c.config.Client,
+		})
+	}
+
+	// DEBUG: If no results, return error with XML for analysis
+	if len(result) == 0 {
+		xmlPreview := string(resp.Body)
+		if len(xmlPreview) > 1000 {
+			xmlPreview = xmlPreview[:1000] + "..."
+		}
+		return nil, fmt.Errorf("[DEBUG v2] no transports found for user %s. Parsed: %d workbench, %d customizing.\nXML received:\n%s",
+			user, len(userTransports.Workbench), len(userTransports.Customizing), xmlPreview)
+	}
+
+	return result, nil
+}
+
+// statusToText converts transport status code to text
+func statusToText(status string) string {
+	switch status {
+	case "D":
+		return "Modifiable"
+	case "L":
+		return "Locked"
+	case "R":
+		return "Released"
+	default:
+		return status
+	}
 }
 
 // GetTransport returns detailed transport information
@@ -507,7 +556,7 @@ func (c *Client) GetTransport(ctx context.Context, number string) (*TransportDet
 
 	resp, err := c.transport.Request(ctx, path, &RequestOptions{
 		Method: http.MethodGet,
-		Accept: "application/vnd.sap.adt.transportrequests.v1+xml",
+		Accept: "application/vnd.sap.adt.transportorganizer.v1+xml",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting transport %s: %w", number, err)

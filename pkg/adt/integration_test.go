@@ -67,6 +67,51 @@ func TestIntegration_SearchObject(t *testing.T) {
 	}
 }
 
+func TestIntegration_SourceSearch(t *testing.T) {
+	client := getIntegrationClient(t)
+	ctx := context.Background()
+
+	// Test basic source search - look for SELECT statement
+	results, err := client.SourceSearch(ctx, "SELECT * FROM", 10, nil, nil)
+	if err != nil {
+		// Feature might not be available - check error type
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "404") || strings.Contains(errMsg, "501") ||
+			strings.Contains(errMsg, "Not Found") || strings.Contains(errMsg, "Not Implemented") {
+			t.Skip("SRIS Source Search not available on this system (activate SRIS_SOURCE_SEARCH via SFW5)")
+		}
+		t.Fatalf("SourceSearch failed: %v", err)
+	}
+
+	t.Logf("Found %d matches for 'SELECT * FROM'", results.TotalCount)
+
+	if len(results.Matches) > 0 {
+		t.Logf("First few matches:")
+		for i, m := range results.Matches {
+			if i >= 3 {
+				break
+			}
+			t.Logf("  %s (%s) line %d", m.Name, m.Type, m.Line)
+		}
+	}
+
+	// Test with package filter
+	results, err = client.SourceSearch(ctx, "WRITE", 5, nil, []string{"$TMP"})
+	if err != nil {
+		t.Logf("SourceSearch with package filter: %v", err)
+	} else {
+		t.Logf("Found %d matches for 'WRITE' in $TMP", results.TotalCount)
+	}
+
+	// Test with object type filter
+	results, err = client.SourceSearch(ctx, "METHOD", 5, []string{"CLAS"}, nil)
+	if err != nil {
+		t.Logf("SourceSearch with object type filter: %v", err)
+	} else {
+		t.Logf("Found %d matches for 'METHOD' in classes", results.TotalCount)
+	}
+}
+
 func TestIntegration_GetProgram(t *testing.T) {
 	client := getIntegrationClient(t)
 	ctx := context.Background()
@@ -329,7 +374,7 @@ func TestIntegration_RunUnitTests(t *testing.T) {
 			if len(method.Alerts) > 0 {
 				status = "FAIL"
 			}
-			t.Logf("    [%s] %s (%d µs)", status, method.Name, method.ExecutionTime)
+			t.Logf("    [%s] %s (%.0f µs)", status, method.Name, method.ExecutionTime)
 		}
 	}
 }
@@ -613,7 +658,7 @@ ENDCLASS.`, strings.ToLower(className))
 					t.Logf("    Alert: %s - %s", alert.Severity, alert.Title)
 				}
 			}
-			t.Logf("    [%s] %s (%d µs)", status, method.Name, method.ExecutionTime)
+			t.Logf("    [%s] %s (%.0f µs)", status, method.Name, method.ExecutionTime)
 		}
 	}
 
@@ -881,7 +926,7 @@ ENDCLASS.`, strings.ToLower(className))
 				if len(tm.Alerts) > 0 {
 					status = "FAIL"
 				}
-				t.Logf("    [%s] %s (%d µs)", status, tm.Name, tm.ExecutionTime)
+				t.Logf("    [%s] %s (%.0f µs)", status, tm.Name, tm.ExecutionTime)
 				for _, alert := range tm.Alerts {
 					t.Logf("      Alert: %s - %s", alert.Severity, alert.Title)
 				}

@@ -52,12 +52,13 @@ func NewTransportWithClient(cfg *Config, client HTTPDoer) *Transport {
 
 // RequestOptions contains options for an HTTP request.
 type RequestOptions struct {
-	Method      string
-	Headers     map[string]string
-	Query       url.Values
-	Body        []byte
-	ContentType string
-	Accept      string
+	Method           string
+	Headers          map[string]string
+	Query            url.Values
+	Body             []byte
+	ContentType      string
+	Accept           string
+	SkipSAPParams    bool // Skip adding sap-client and sap-language to query
 }
 
 // Response wraps an HTTP response with convenience methods.
@@ -77,7 +78,7 @@ func (t *Transport) Request(ctx context.Context, path string, opts *RequestOptio
 	}
 
 	// Build URL
-	reqURL, err := t.buildURL(path, opts.Query)
+	reqURL, err := t.buildURLWithOptions(path, opts.Query, opts.SkipSAPParams)
 	if err != nil {
 		return nil, fmt.Errorf("building URL: %w", err)
 	}
@@ -302,6 +303,10 @@ func (t *Transport) fetchCSRFToken(ctx context.Context) error {
 
 // buildURL constructs the full URL for an API request.
 func (t *Transport) buildURL(path string, query url.Values) (string, error) {
+	return t.buildURLWithOptions(path, query, false)
+}
+
+func (t *Transport) buildURLWithOptions(path string, query url.Values, skipSAPParams bool) (string, error) {
 	base := strings.TrimSuffix(t.config.BaseURL, "/")
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
@@ -314,11 +319,13 @@ func (t *Transport) buildURL(path string, query url.Values) (string, error) {
 
 	// Merge query parameters
 	q := u.Query()
-	if t.config.Client != "" {
-		q.Set("sap-client", t.config.Client)
-	}
-	if t.config.Language != "" {
-		q.Set("sap-language", t.config.Language)
+	if !skipSAPParams {
+		if t.config.Client != "" {
+			q.Set("sap-client", t.config.Client)
+		}
+		if t.config.Language != "" {
+			q.Set("sap-language", t.config.Language)
+		}
 	}
 	for k, v := range query {
 		for _, val := range v {

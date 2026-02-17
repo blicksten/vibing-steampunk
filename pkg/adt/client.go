@@ -74,6 +74,61 @@ func (c *Client) SearchObject(ctx context.Context, query string, maxResults int)
 	return ParseSearchResults(resp.Body)
 }
 
+// SourceSearch performs fulltext search in ABAP source code using HANA index (SRIS).
+// Requires SRIS_SOURCE_SEARCH business function activated and SRIS_CODE_SEARCH_PREPARATION run.
+// Returns matches with source location (object, line, column) and code snippet.
+//
+// Query syntax:
+//   - Simple text: "SELECT * FROM"
+//   - Boolean: "BAPI AND MATERIAL"
+//   - Wildcards: "Z*_HELPER"
+//   - Phrase: "\"exact phrase\""
+//
+// Parameters:
+//   - query: Search query string
+//   - maxResults: Maximum number of results (default 100)
+//   - objectTypes: Filter by object types (e.g., ["CLAS", "PROG"]). Empty = search all.
+//   - packageNames: Filter by package names (e.g., ["$TMP"]). Empty = search all.
+func (c *Client) SourceSearch(ctx context.Context, query string, maxResults int, objectTypes []string, packageNames []string) (*SourceSearchResponse, error) {
+	if maxResults <= 0 {
+		maxResults = 100
+	}
+
+	params := url.Values{}
+	params.Set("searchString", query)
+	params.Set("maxResults", fmt.Sprintf("%d", maxResults))
+
+	// Optional filters
+	if len(objectTypes) > 0 {
+		params.Set("objectType", strings.Join(objectTypes, ","))
+	}
+	if len(packageNames) > 0 {
+		params.Set("packageName", strings.Join(packageNames, ","))
+	}
+
+	resp, err := c.transport.Request(ctx, "/sap/bc/adt/repository/informationsystem/textsearch", &RequestOptions{
+		Method: http.MethodGet,
+		Query:  params,
+		Accept: "application/xml",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("source search request failed: %w", err)
+	}
+
+	results, err := ParseSourceSearchResults(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse source search results: %w", err)
+	}
+
+	return &SourceSearchResponse{
+		Objects:         results.Objects,
+		NumberOfResults: results.NumberOfResults,
+		TotalResults:    results.TotalResults,
+		QueryTimeMillis: results.QueryTimeMillis,
+		Query:           query,
+	}, nil
+}
+
 // --- Program Operations ---
 
 // GetProgram retrieves the source code of an ABAP program.

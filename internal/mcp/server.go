@@ -270,10 +270,11 @@ func (s *Server) registerTools(mode string, disabledGroups string) {
 		"GetSource":   true,
 		"WriteSource": true,
 
-		// Search tools (3) - foundation
+		// Search tools (4) - foundation
 		"GrepObjects":  true, // Multi-object search (replaces GrepObject)
 		"GrepPackages": true, // Multi-package + recursive (replaces GrepPackage)
 		"SearchObject": true,
+		"SourceSearch": true, // SRIS fulltext search (HANA, much faster)
 
 		// Primary workflow (1)
 		"EditSource": true,
@@ -1024,6 +1025,27 @@ func (s *Server) registerTools(mode string, disabledGroups string) {
 	), s.handleSearchObject)
 	}
 
+	// SourceSearch - SRIS fulltext search (HANA)
+	if shouldRegister("SourceSearch") {
+		s.mcpServer.AddTool(mcp.NewTool("SourceSearch",
+		mcp.WithDescription("Server-side fulltext search in ABAP source code using HANA index (SRIS). Much faster than GrepPackages for large codebases. Requires SRIS_SOURCE_SEARCH business function activated via SFW5 and SRIS_CODE_SEARCH_PREPARATION report run."),
+		mcp.WithString("query",
+			mcp.Required(),
+			mcp.Description("Search query (supports: simple text, AND/OR/NOT operators, wildcards *, phrase \"...\")"),
+		),
+		mcp.WithNumber("max_results",
+			mcp.Description("Maximum results to return (default: 100)"),
+		),
+		mcp.WithArray("object_types",
+			mcp.Description("Filter by object types (e.g., [\"CLAS\", \"PROG\", \"FUGR\"])"),
+			mcp.Items(map[string]interface{}{"type": "string"}),
+		),
+		mcp.WithArray("packages",
+			mcp.Description("Filter by package names (e.g., [\"$TMP\", \"ZLOCAL\"])"),
+			mcp.Items(map[string]interface{}{"type": "string"}),
+		),
+	), s.handleSourceSearch)
+	}
 
 	// --- Development Tools ---
 
