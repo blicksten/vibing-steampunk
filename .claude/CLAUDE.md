@@ -1,5 +1,5 @@
 ﻿<!-- DO NOT EDIT -- managed by sync.ps1 from claude-team-config -->
-<!-- Synced: 2026-02-17 22:40:51 -->
+<!-- Synced: 2026-02-17 23:04:34 -->
 <!-- Base: base/CLAUDE.md | Overlay: overlays/vibing-steampunk.md -->
 
 
@@ -9,9 +9,9 @@ Never hallucinate or fabricate information. If you're unsure about anything, you
 
 ## Language & Terminology
 
-- **All code artifacts in English.** Code, comments, docstrings, variable/function names, README files, commit messages, and diagrams â€” always in English.
-- **No transliteration of English technical terms into Cyrillic.** If there is no established Russian equivalent, use the original term in Latin script (git stash, merge, rebase, commit, pull request), not Cyrillic transliterations like "ÑÑ‚ÑÑˆÐ¸Ñ‚ÑŒ", "Ð¼ÐµÑ€Ð¶Ð¸Ñ‚ÑŒ", "Ñ€ÐµÐ±ÐµÐ¹Ð·Ð¸Ñ‚ÑŒ", "ÐºÐ¾Ð¼Ð¼Ð¸Ñ‚".
-- **Conversation with the user** â€” in the language the user writes in.
+- **All code artifacts in English.** Code, comments, docstrings, variable/function names, README files, commit messages, and diagrams — always in English.
+- **No transliteration of English technical terms into Cyrillic.** If there is no established Russian equivalent, use the original term in Latin script (git stash, merge, rebase, commit, pull request), not Cyrillic transliterations like "стэшить", "мержить", "ребейзить", "коммит".
+- **Conversation with the user** — in the language the user writes in.
 
 ## Research & Verification
 
@@ -42,8 +42,12 @@ Before implementing solutions or suggesting approaches:
 
 ## Permissions
 
-- **Always allow reading log/output files** - Reading temporary output files (task logs, server output, background process output) should NEVER require user confirmation
-- **Always allow reading project source files** - Reading any file within the project directory and related project directories should not require confirmation
+- **Always allow reading log/output files** - Reading temporary output files (task logs, server output, background process output) should NEVER require user confirmation. This includes but is not limited to:
+  - Claude Code background task output files (`.output` in temp directories)
+  - Any `*.log`, `*.output`, `*.txt` files in system temp directories
+  - Server stdout/stderr output files
+  - Test runner output files
+- **Always allow reading project source files** - Reading any file within the project directory and related project directories should not require confirmation. This includes all subdirectories, config files, fixture files, test files, and documentation.
 - **Always allow reading configuration files** - Reading `.env`, `*.json`, `*.toml`, `*.yaml`, `*.cfg` files in any project directory should not require confirmation
 
 ## Git & GitLab
@@ -58,48 +62,48 @@ After creating any implementation plan, a structured audit **must** be conducted
 
 ### Audit Workflow
 
-1. **Audit Leader Agent** â€” launch a `general-purpose` agent acting as **Lead Auditor / Team Lead**.
+1. **Audit Leader Agent** — launch a `general-purpose` agent acting as **Lead Auditor / Team Lead**.
    - The Lead Auditor reads the plan and determines which domain expertise is required (backend, database, security, API design, performance, etc.).
-   - The Lead Auditor delegates the review to one or more **Specialist Auditor** agents â€” each with clear domain scope.
+   - The Lead Auditor delegates the review to one or more **Specialist Auditor** agents — each with clear domain scope.
 
-2. **Specialist Auditor Agent(s)** â€” launched by the Lead Auditor (or in parallel by the orchestrator).
+2. **Specialist Auditor Agent(s)** — launched by the Lead Auditor (or in parallel by the orchestrator).
    - Each Specialist Auditor is given a focused scope (e.g., "audit database query patterns", "audit search algorithm correctness", "audit backward compatibility").
-   - The Specialist Auditor **must verify technical assumptions** using all available means: external sources (WebSearch, context7, official docs), own knowledge/memory, and any relevant MCP tools. No single source is sufficient â€” cross-check when possible.
+   - The Specialist Auditor **must verify technical assumptions** using all available means: external sources (WebSearch, context7, official docs), own knowledge/memory, and any relevant MCP tools. No single source is sufficient — cross-check when possible.
    - The Specialist Auditor produces a verdict:
-     - **APPROVE** â€” no issues found, plan is sound
-     - **REJECT with findings** â€” list of issues ranked by severity (CRITICAL / HIGH / MEDIUM / LOW) with specific fix recommendations
-     - **ESCALATE to user** â€” unresolvable ambiguity or risk that requires human decision
+     - **APPROVE** — no issues found, plan is sound
+     - **REJECT with findings** — list of issues ranked by severity (CRITICAL / HIGH / MEDIUM / LOW) with specific fix recommendations
+     - **ESCALATE to user** — unresolvable ambiguity or risk that requires human decision
 
-3. **Chief Architect Review** â€” after all Specialist Auditors finish, the **Lead Auditor** performs a final holistic review as **Chief Architect**:
+3. **Chief Architect Review** — after all Specialist Auditors finish, the **Lead Auditor** performs a final holistic review as **Chief Architect**:
    - Has access to the full picture: all specialist findings + the original plan + codebase context
    - Focuses on **cross-domain gaps** that no single specialist could see
    - Validates that specialist findings don't contradict each other
    - Checks that the plan as a whole is coherent, not just that individual parts are correct
    - Produces the same verdict: APPROVE / REJECT with findings / ESCALATE
 
-4. **No inventing, no guessing** â€” auditors at all levels must not fabricate concerns or imagine problems. Only concrete, verifiable findings based on actual code analysis and documentation. If unsure â€” escalate to user, do not assume.
+4. **No inventing, no guessing** — auditors at all levels must not fabricate concerns or imagine problems. Only concrete, verifiable findings based on actual code analysis and documentation. If unsure — escalate to user, do not assume.
 
-5. **Iteration** â€” if any audit level returns REJECT:
+5. **Iteration** — if any audit level returns REJECT:
    - Fix all CRITICAL and HIGH issues in the plan
    - Re-submit to the same auditor for re-review
    - Repeat until APPROVE or ESCALATE
    - After specialist fixes, Chief Architect re-reviews the whole plan again
 
 6. **Final outcome:**
-   - **All auditors + Chief Architect APPROVE** â†’ plan is approved, implementation begins
-   - **Any level ESCALATE** â†’ user is notified with the specific unresolved question, user makes the decision
+   - **All auditors + Chief Architect APPROVE** → plan is approved, implementation begins
+   - **Any level ESCALATE** → user is notified with the specific unresolved question, user makes the decision
    - The audit summary (specialist findings + architect review + final verdict) is recorded in the plan file
 
 ### Execution Plan Requirement
 
 After the audit is fully approved (all levels APPROVE), the final plan **must** be structured as a detailed execution roadmap before implementation begins:
 
-- **Phase â†’ Steps** format: each phase contains numbered, atomic steps that can be executed independently
+- **Phase → Steps** format: each phase contains numbered, atomic steps that can be executed independently
 - Each step has a **clear checkpoint**: what was done, what file was changed, what to verify
 - The plan must be **resumable**: if the context window is cleared or a new session starts, any developer (or agent) can read the plan file and continue from the last completed step without re-gathering context
 - Mark completed steps with `[x]` as work progresses; pending steps remain `[ ]`
 - Record commit hashes, test counts, and deviations inline after each phase completion
-- Save the plan to a persistent location (plan file or `docs/ROADMAP.md`) â€” not just in conversation memory
+- Save the plan to a persistent location (plan file or `docs/ROADMAP.md`) — not just in conversation memory
 
 ### When to run the audit
 
@@ -114,20 +118,30 @@ After the audit is fully approved (all levels APPROVE), the final plan **must** 
 - Coupling issues, backward compatibility breaks
 - Untested paths, wrong assumptions about APIs/libraries
 - Performance regressions, deployment blind spots
-- Blast radius â€” which other components are affected by the change
+- Blast radius — which other components are affected by the change
 
 ### Rules Architect Agent
 
 Rules and CLAUDE.md instructions must NOT be written ad-hoc by the implementation agent. A dedicated **Rules Architect Agent** is responsible for crafting, structuring, and maintaining CLAUDE.md rules across all projects.
 
-**Rule quality principles:**
-- **Atomic** â€” one rule = one concern, no compound sentences mixing unrelated requirements
-- **Actionable** â€” each rule describes a concrete action, not an abstract goal
-- **Verifiable** â€” it must be possible to check whether the rule was followed
-- **Non-contradictory** â€” no conflicts with existing rules; if replacing a rule, explicitly state what it replaces
-- **Scoped** â€” clearly state when the rule applies and when it doesn't
+**Agent profile:**
+- Type: `general-purpose` agent with role **Rules Architect**
+- Expertise: technical writing, process design, CLAUDE.md conventions, task decomposition
+- Before writing rules, the agent **must research best practices**: consult Claude Code documentation (via context7 or WebSearch), study existing CLAUDE.md patterns in the project, and review industry standards for AI agent instructions (clarity, atomicity, testability)
 
-## Database Protection (CRITICAL â€” NEVER VIOLATE)
+**Rule quality principles:**
+- **Atomic** — one rule = one concern, no compound sentences mixing unrelated requirements
+- **Actionable** — each rule describes a concrete action, not an abstract goal
+- **Verifiable** — it must be possible to check whether the rule was followed
+- **Non-contradictory** — no conflicts with existing rules; if replacing a rule, explicitly state what it replaces
+- **Scoped** — clearly state when the rule applies and when it doesn't
+
+**Workflow:**
+- The Rules Architect produces a draft of new/updated rules
+- The draft is reviewed by the Chief Architect (audit step 3) before being applied to any CLAUDE.md file
+- If the Rules Architect agent doesn't exist yet — create it first: define the agent prompt template and document it in `docs/AGENTS.md`
+
+## Database Protection (CRITICAL — NEVER VIOLATE)
 
 - **NEVER delete databases** (ChromaDB `chroma_db/` directories, Docker volumes, SQLite files). This is an absolute rule with ZERO exceptions.
 - **Before full re-index or destructive operation**: ALWAYS create a backup first:
@@ -135,26 +149,32 @@ Rules and CLAUDE.md instructions must NOT be written ad-hoc by the implementatio
   2. Verify the backup exists and has correct size
   3. Only then proceed
 - **Allowed operations**: backup, copy, archive, read. **Forbidden**: delete, drop, rm -rf, `shutil.rmtree()` on DB
-- **Double verification**: Any code that touches a database path destructively must be reviewed twice â€” once by the implementer, once by the audit agent
+- **Double verification**: Any code that touches a database path destructively must be reviewed twice — once by the implementer, once by the audit agent
 
 ## Plan Continuity & Documentation (MANDATORY)
 
 When working on phased implementation plans:
 
-- **Save detailed plans to project documentation** â€” After completing planning or any phase, save the full plan to `docs/ROADMAP.md` with enough detail to resume from any point without additional context gathering
-- **Document all analysis** â€” Save comprehensive codebase analysis to `docs/ANALYSIS.md` including: architecture, all components, patterns, configuration, known issues
-- **Track deviations** â€” When a phase produces critical changes (bug fixes, architectural decisions, pattern changes), immediately update the roadmap to reflect impact on future phases
-- **Mark completed phases** â€” Update `docs/ROADMAP.md` with completion status, actual test counts, and commit hashes after each phase
-- **Record learned patterns** â€” When discovering gotchas, document them in the roadmap's "Known Gotchas" section for future phases
-- **Update MEMORY.md** â€” Keep the auto-memory file current with project state
-- **Update all documentation before commit** â€” After all changes are implemented and tests pass, but BEFORE committing and pushing, update all relevant documentation. This is a gate: no commit without documentation being current.
+- **Save detailed plans to project documentation** — After completing planning or any phase, save the full plan to `docs/ROADMAP.md` with enough detail to resume from any point without additional context gathering
+- **Document all analysis** — Save comprehensive codebase analysis to `docs/ANALYSIS.md` including: architecture, all components, patterns, regex catalogs, configuration, known issues
+- **Track deviations** — When a phase produces critical changes (bug fixes, architectural decisions, pattern changes), immediately update the roadmap to reflect impact on future phases
+- **Mark completed phases** — Update `docs/ROADMAP.md` with completion status, actual test counts, and commit hashes after each phase
+- **Record learned patterns** — When discovering gotchas, document them in the roadmap's "Known Gotchas" section for future phases
+- **Update MEMORY.md** — Keep the auto-memory file current with project state
+- **Update all documentation before commit** — After all changes are implemented and tests pass, but BEFORE committing and pushing, update all relevant documentation:
+  - `docs/ROADMAP.md` — mark completed phases, record commit context, update status tables
+  - `docs/ANALYSIS.md` — reflect any architectural changes, new patterns, updated regex catalogs
+  - `docs/AGENTS.md` — if new agents were created or existing ones modified
+  - `MEMORY.md` — update project state (current phase, test counts, key lessons learned)
+  - Code comments — ensure new/changed functions have accurate docstrings
+  - This is a gate: no commit without documentation being current
 
 ## Testing & Mock Data (CRITICAL)
 
-- **Mock fixtures must match real formats** â€” NEVER fabricate or guess response formats for fixture/mock files. Before creating or updating a fixture, query the real external service to capture the actual response format.
-- **If real format is broken** â€” file a bug against the upstream service. Do not invent a workaround format for the fixture.
-- **Tests must verify real patterns** â€” Unit tests must include test cases using the real response format (not just mock format). A test that passes against fake data but fails on real data is worse than no test at all.
-- **Test what matters** â€” Tests that only verify fabricated formats provide zero value.
+- **Mock fixtures must match real formats** — NEVER fabricate or guess response formats for fixture/mock files. Before creating or updating a fixture, query the real external service to capture the actual response format.
+- **If real format is broken** — file a bug against the upstream service. Do not invent a workaround format for the fixture.
+- **Tests must verify real patterns** — Unit tests must include test cases using the real response format (not just mock format). A test that passes against fake data but fails on real data is worse than no test at all.
+- **Test what matters** — Tests that only verify fabricated formats provide zero value.
 
 ## Collaboration Protocol (ALL AGENTS)
 
@@ -166,7 +186,7 @@ If for quality execution of a task you need help from another specialist:
    **NEEDS ASSISTANCE:**
    - **Agent**: [agent name, e.g. security-auditor]
    - **Why**: [why this specialist is needed]
-   - **Context**: [what to pass â€” files, lines, findings]
+   - **Context**: [what to pass — files, lines, findings]
    - **After**: [continue my work / hand to human / chain to third agent]
 
 ## Mindset
@@ -183,7 +203,7 @@ If for quality execution of a task you need help from another specialist:
 ## Go Development Patterns
 
 - **Error handling**: Always check `err != nil` immediately after function calls
-- **Naming**: Use Go conventions â€” `camelCase` for unexported, `PascalCase` for exported
+- **Naming**: Use Go conventions — `camelCase` for unexported, `PascalCase` for exported
 - **Testing**: `go test ./...` for all tests, `go test -v -run TestName` for specific
 - **Dependencies**: Use `go mod tidy` after adding/removing imports
 
@@ -204,5 +224,5 @@ If for quality execution of a task you need help from another specialist:
 ## Security Note
 
 - SAP credentials MUST be stored in `.env` or credential manager, NEVER in committed files
-- Do NOT hardcode passwords in `settings.local.json` â€” use environment variables
+- Do NOT hardcode passwords in `settings.local.json` — use environment variables
 
