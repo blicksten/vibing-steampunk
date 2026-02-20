@@ -669,43 +669,20 @@ pipeline := dsl.RAPPipeline(client, "./src/", "$ZRAY", "ZTRAVEL_SB")
 
 ---
 
-## Last Session Reference (2026-02-20)
+## Last Session Reference (2026-02-21)
 
-### Objective: Version History Tools - COMPLETED ✅
+### Bugfix: GetUserTransports empty on sandbox systems - COMPLETED ✅
 
-Added 3 new MCP tools for ABAP object version history and comparison:
-- **GetRevisions** — list version history (dates, authors, transports)
-- **GetRevisionSource** — get source of a specific version
-- **CompareVersions** — unified diff between two versions (reuses LCS diff from CompareSource)
+`GetUserTransports` returned empty results on SC3 (sandbox, target=DUM) while `ListTransports` found 3 transports for the same user. Root cause: `targets=true` query param causes SAP to organize response by target system, but DUM is not a real target — so the tree response was empty.
 
+**Fix:** Added fallback in `GetUserTransports` — if tree-based response is empty, delegates to `ListTransports` (which has flat ADT + SQL fallback). Results are converted to `UserTransports` format with workbench/customizing grouping.
+
+Changed file: `pkg/adt/transport.go`
+
+### Previous Session: Version History Tools (2026-02-20) - COMPLETED ✅
+
+Added 3 new MCP tools: GetRevisions, GetRevisionSource, CompareVersions.
 New files: `pkg/adt/revisions.go`, `pkg/adt/revisions_test.go`, `internal/mcp/handlers_revisions.go`
-Report: `reports/2026-02-20-001-version-history-implementation.md`
-
-### Previous Session: Upstream Sync (v2.22.0 → v2.26.0) - COMPLETED ✅
-
-Merged 25 upstream commits (5 releases) into our fork.
-
-### What Was Merged
-
-- **v2.22.0** — Transport API 406 fix, HTTP_PROXY support, `.vsp.json` tool visibility, GetAbapHelp tool
-- **v2.23.0** — GitExport saves ZIP to disk, GetAbapHelp via WebSocket, tool aliases disabled
-- **v2.24.0** — Transportable Edits Safety (`--allow-transportable-edits`)
-- **v2.25.0** — CreatePackage `software_component`, namespace URL encoding fix
-- **v2.26.0** — Refactoring `zcl_vsp_tadir_move`, `packageExists` fix for `$`-packages, namespace tests
-
-### Conflict Resolution
-
-| File | Resolution |
-|------|-----------|
-| `.gitignore` | Both blocks kept (our Claude settings + upstream sessions/) |
-| `pkg/adt/features.go` | Combined: HANA from upstream + SourceSearch from ours |
-| `pkg/adt/transport.go` | Took upstream (SQL fallback, proper Accept headers, no DEBUG hacks) |
-
-### Our Changes Preserved
-
-- **SourceSearch tool** — SRIS fulltext search (client, handler, feature probe, XML types, integration test)
-- **SkipSAPParams** — HTTP transport option (used by some endpoints)
-- Backup branch: `local-changes-backup-2026-02-18`
 
 ### TODO
 

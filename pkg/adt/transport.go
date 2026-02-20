@@ -66,6 +66,8 @@ const (
 
 // GetUserTransports retrieves all transport requests for a user.
 // Returns both workbench and customizing requests grouped by target system.
+// Falls back to ListTransports (flat ADT + SQL) on sandbox systems where
+// the target-based tree response is empty (e.g., target=DUM).
 func (c *Client) GetUserTransports(ctx context.Context, userName string) (*UserTransports, error) {
 	// Safety check
 	if err := c.checkSafety(OpTransport, "GetUserTransports"); err != nil {
@@ -83,7 +85,38 @@ func (c *Client) GetUserTransports(ctx context.Context, userName string) (*UserT
 		return nil, fmt.Errorf("get user transports failed: %w", err)
 	}
 
-	return parseUserTransports(resp.Body)
+	result, err := parseUserTransports(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// If tree-based response is empty (common on sandbox systems with target=DUM),
+	// fall back to flat ListTransports which has its own SQL fallback.
+	if len(result.Workbench) == 0 && len(result.Customizing) == 0 {
+		transports, err := c.ListTransports(ctx, userName)
+		if err != nil {
+			return result, nil // return empty rather than error
+		}
+		for _, tr := range transports {
+			req := TransportRequest{
+				Number:      tr.Number,
+				Owner:       tr.Owner,
+				Description: tr.Description,
+				Status:      tr.StatusText,
+				Target:      tr.Target,
+			}
+			switch tr.Type {
+			case "W":
+				req.Type = "customizing"
+				result.Customizing = append(result.Customizing, req)
+			default: // K and others → workbench
+				req.Type = "workbench"
+				result.Workbench = append(result.Workbench, req)
+			}
+		}
+	}
+
+	return result, nil
 }
 
 func parseUserTransports(data []byte) (*UserTransports, error) {
