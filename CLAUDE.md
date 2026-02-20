@@ -279,7 +279,8 @@ The project includes **6 specialized agents** (Claude Code skills) for complex w
 ## Codebase Structure
 
 ```
-cmd/vsp/main.go       # Entry point
+cmd/vsp/main.go              # Entry point
+cmd/vsp/config_cmd.go        # Config subcommand (vsp config tools)
 internal/mcp/server.go       # MCP server (45 tool handlers, mode-aware)
 pkg/
 ├── adt/
@@ -295,6 +296,7 @@ pkg/
 │   ├── safety.go             # Safety & protection configuration
 │   ├── safety_test.go        # Safety unit tests (25 tests)
 │   ├── features.go           # Feature detection (safety network)
+│   ├── help.go               # ABAP keyword documentation (GetAbapHelp)
 │   ├── http.go               # HTTP transport (CSRF, sessions)
 │   ├── config.go             # Configuration
 │   ├── cookies.go            # Cookie file parsing (Netscape format)
@@ -312,6 +314,10 @@ pkg/
 │   ├── lua.go                # Lua VM wrapper, REPL
 │   ├── bindings.go           # ADT tool bindings for Lua
 │   └── helpers.go            # Lua<->Go value conversion
+│
+├── config/                   # Multi-system configuration
+│   ├── systems.go            # .vsp.json tool visibility config
+│   └── systems_test.go       # Unit tests
 │
 └── cache/                    # Caching infrastructure (Report 010)
     ├── cache.go              # Core interfaces and types
@@ -337,6 +343,8 @@ pkg/
 | Add workflow | `pkg/adt/workflows.go` |
 | Add XML types | `pkg/adt/xml.go` |
 | Add integration test | `pkg/adt/integration_test.go` |
+| Add ABAP help feature | `pkg/adt/help.go` |
+| Configure tool visibility | `pkg/config/systems.go`, `cmd/vsp/config_cmd.go` |
 
 ## Adding a New Tool
 
@@ -570,15 +578,15 @@ When creating a new report:
 | Metric | Value |
 |--------|-------|
 | **Tools** | 100 (55 focused, 100 expert) |
-| **Unit Tests** | 244 |
-| **Integration Tests** | 35 |
+| **Unit Tests** | 244+ |
+| **Integration Tests** | 35+ |
 | **Platforms** | 9 |
 | **Phase** | 5 (TAS-Style Debugging) - Complete |
 | **Reports** | 29 numbered + 6 reference docs |
 | **Lua Scripting** | ✅ Complete (v2.14 - REPL, 40+ bindings, example scripts) |
 | **Cache Package** | ✅ Complete (in-memory + SQLite) |
-| **Safety System** | ✅ Complete (operation filtering, package restrictions) |
-| **Feature Detection** | ✅ Complete (GetFeatures tool, auto/on/off for abapGit, RAP, AMDP, UI5, Transport, SourceSearch) |
+| **Safety System** | ✅ Complete (operation filtering, package restrictions, transportable edits protection) |
+| **Feature Detection** | ✅ Complete (GetFeatures tool, auto/on/off for HANA, abapGit, RAP, AMDP, UI5, Transport, SourceSearch) |
 | **SourceSearch** | ✅ Complete (SRIS HANA fulltext search - requires SFW5 SRIS_SOURCE_SEARCH) |
 | **DSL Package** | ✅ Complete (fluent API, YAML workflows, test orchestration, batch import/export) |
 | **Batch Import/Export** | ✅ Complete (v2.12 - abapGit-compatible format, priority ordering) |
@@ -592,12 +600,18 @@ When creating a new report:
 | **RAP OData E2E** | ✅ Complete (DDLS, SRVD, SRVB create + publish) |
 | **External Debugger** | ⚠️ HTTP unreliable → Use WebSocket ZADT_VSP (stateful APC) |
 | **AMDP Debugger** | ⚠️ Experimental (Session works, breakpoints need investigation - expert mode only) |
-| **Transport Mgmt** | ✅ Complete (5 tools with safety controls - v2.11.0) |
+| **Transport Mgmt** | ✅ Complete (5 tools with safety controls, SQL fallback for sandbox systems) |
+| **Transportable Edits** | ✅ Complete (v2.24.0 - --allow-transportable-edits safety flag) |
 | **UI5/BSP Mgmt** | ✅ Partial (Read ops work; Create needs alternate API) |
 | **Tool Groups** | ✅ Complete (--disabled-groups: 5/U, T, H, D, C) |
+| **Tool Visibility** | ✅ Complete (.vsp.json granular tool enable/disable) |
 | **Class Includes** | ✅ Complete (v2.12 - testclasses, locals_def, locals_imp, macros) |
-| **abapGit Integration** | ✅ Complete (v2.16.0 - WebSocket, GitTypes, GitExport - 158 object types) |
+| **abapGit Integration** | ✅ Complete (v2.16.0 - WebSocket, GitTypes, GitExport to disk - 158 object types) |
 | **Install Tools** | ✅ Complete (v2.17.0 - InstallZADTVSP, InstallAbapGit, ListDependencies) |
+| **GetAbapHelp** | ✅ Complete (ABAP keyword docs, Level 2 via ZADT_VSP WebSocket) |
+| **Namespace Support** | ✅ Complete (URL encoding for /NAMESPACE/ objects) |
+| **HTTP Proxy** | ✅ Complete (HTTP_PROXY/HTTPS_PROXY env var support) |
+| **Multi-System Config** | ✅ Complete (pkg/config, vsp config subcommand) |
 
 ### DSL & Workflow Usage
 
@@ -652,50 +666,35 @@ pipeline := dsl.RAPPipeline(client, "./src/", "$ZRAY", "ZTRAVEL_SB")
 
 ---
 
-## Last Session Reference (2026-01-07)
+## Last Session Reference (2026-02-20)
 
-### Objective: SAP GUI Terminal ID Integration - COMPLETED ✅
+### Objective: Upstream Sync (v2.22.0 → v2.26.0) - COMPLETED ✅
 
-Added `SAP_TERMINAL_ID` config to enable cross-tool breakpoint sharing with SAP GUI.
+Merged 25 upstream commits (5 releases) into our fork.
 
-### What Was Done
+### What Was Merged
 
-1. ✅ **Merged Community PRs** (#4, #6 from vitalratel)
-   - MoveObject tool, WebSocket refactoring, ZCL_VSP_UTILS
+- **v2.22.0** — Transport API 406 fix, HTTP_PROXY support, `.vsp.json` tool visibility, GetAbapHelp tool
+- **v2.23.0** — GitExport saves ZIP to disk, GetAbapHelp via WebSocket, tool aliases disabled
+- **v2.24.0** — Transportable Edits Safety (`--allow-transportable-edits`)
+- **v2.25.0** — CreatePackage `software_component`, namespace URL encoding fix
+- **v2.26.0** — Refactoring `zcl_vsp_tadir_move`, `packageExists` fix for `$`-packages, namespace tests
 
-2. ✅ **Terminal ID Feature** - SAP GUI breakpoint compatibility
-   - Added `--terminal-id` CLI flag
-   - Added `SAP_TERMINAL_ID` env variable support
-   - Updated `pkg/adt/config.go` - `TerminalID` field + `WithTerminalID()` option
-   - Updated `pkg/adt/debugger.go` - `SetTerminalID()` function, priority: custom > user-based > default
-   - Updated `internal/mcp/server.go` - Config field + initialization
-   - Updated `cmd/vsp/main.go` - flag + viper binding
+### Conflict Resolution
 
-### How It Works
+| File | Resolution |
+|------|-----------|
+| `.gitignore` | Both blocks kept (our Claude settings + upstream sessions/) |
+| `pkg/adt/features.go` | Combined: HANA from upstream + SourceSearch from ours |
+| `pkg/adt/transport.go` | Took upstream (SQL fallback, proper Accept headers, no DEBUG hacks) |
 
-SAP GUI stores terminal ID in:
-- **Windows**: Registry `HKCU\Software\SAP\ABAP Debugging\TerminalID`
-- **Linux/Mac**: File `~/.SAP/ABAPDebugging/terminalId`
+### Our Changes Preserved
 
-By configuring vsp to use the same terminal ID, breakpoints set by vsp can be hit by SAP GUI sessions!
-
-### Configuration
-
-```bash
-# .env file
-SAP_TERMINAL_ID=D0C586D015974B75BFB2A306A4A13AEA
-
-# Or CLI
-vsp --terminal-id D0C586D015974B75BFB2A306A4A13AEA
-```
+- **SourceSearch tool** — SRIS fulltext search (client, handler, feature probe, XML types, integration test)
+- **SkipSAPParams** — HTTP transport option (used by some endpoints)
+- Backup branch: `local-changes-backup-2026-02-18`
 
 ### TODO
 
 - [ ] **Re-add ALV capture for RunReport**
 - [ ] **Test SAP GUI breakpoint sharing** - Set breakpoint via vsp, trigger in SAP GUI
-
-### Previous Session: Method-Level Source Operations (2026-01-06)
-
-- Added `method` parameter to GetSource, EditSource, WriteSource
-- 95% token reduction for method-level work
-- Released as v2.21.0
