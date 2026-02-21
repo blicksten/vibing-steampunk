@@ -9,8 +9,8 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tools | 138 (99 focused, 138 expert) |
-| Unit tests | 302+ |
+| Total tools | 138 (97 focused, 138 expert) |
+| Unit tests | 297 |
 | ADT API coverage | ~84% |
 | Phases completed | Refactoring, Testing, CDS/RAP, DDIC |
 

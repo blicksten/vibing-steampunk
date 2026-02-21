@@ -281,7 +281,7 @@ The project includes **6 specialized agents** (Claude Code skills) for complex w
 ```
 cmd/vsp/main.go              # Entry point
 cmd/vsp/config_cmd.go        # Config subcommand (vsp config tools)
-internal/mcp/server.go       # MCP server (132 tools, mode-aware registration)
+internal/mcp/server.go       # MCP server (138 tools, mode-aware registration)
 pkg/
 ├── adt/
 │   ├── client.go             # ADT client + read operations
@@ -430,11 +430,15 @@ See `embedded/abap/zcl_vsp_amdp_service.clas.abap` for ABAP service implementati
 
 ## Testing
 
-### Unit Tests (238 tests)
+### Unit Tests (297 tests)
 - Mock HTTP client (see `client_test.go`, `http_test.go`, `workflows_test.go`)
 - Cookie parsing tests (`cookies_test.go`)
 - Unified tools tests (GetSource, WriteSource, GrepObjects, GrepPackages)
 - Safety checks (`safety_test.go`)
+- Refactoring tests (`refactoring_test.go`, `quickfix_test.go`)
+- Testing & quality tests (`testing_test.go`)
+- CDS tools tests (`cds_tools_test.go`)
+- DDIC & transport tests (`ddic_test.go`)
 - Run: `go test ./...`
 
 ### Integration Tests (56 tests)
@@ -587,8 +591,8 @@ When creating a new report:
 
 | Metric | Value |
 |--------|-------|
-| **Tools** | 138 (99 focused, 138 expert) |
-| **Unit Tests** | 302+ |
+| **Tools** | 138 (97 focused, 138 expert) |
+| **Unit Tests** | 297 |
 | **Integration Tests** | 56 |
 | **Platforms** | 9 |
 | **Phase** | 5 (TAS-Style Debugging) - Complete |
@@ -610,7 +614,7 @@ When creating a new report:
 | **RAP OData E2E** | ✅ Complete (DDLS, SRVD, SRVB create + publish) |
 | **External Debugger** | ⚠️ HTTP unreliable → Use WebSocket ZADT_VSP (stateful APC) |
 | **AMDP Debugger** | ⚠️ Experimental (Session works, breakpoints need investigation - expert mode only) |
-| **Transport Mgmt** | ✅ Complete (5 tools with safety controls, SQL fallback for sandbox systems) |
+| **Transport Mgmt** | ✅ Complete (6 tools with safety controls, SQL fallback for sandbox systems) |
 | **Transportable Edits** | ✅ Complete (v2.24.0 - --allow-transportable-edits safety flag) |
 | **Version History** | ✅ Complete (GetRevisions, GetRevisionSource, CompareVersions - Atom feed parsing) |
 | **UI5/BSP Mgmt** | ✅ Partial (Read ops work; Create needs alternate API) |
@@ -623,6 +627,10 @@ When creating a new report:
 | **Namespace Support** | ✅ Complete (URL encoding for /NAMESPACE/ objects) |
 | **HTTP Proxy** | ✅ Complete (HTTP_PROXY/HTTPS_PROXY env var support) |
 | **Multi-System Config** | ✅ Complete (pkg/config, vsp config subcommand) |
+| **ADT Refactoring** | ✅ Complete (RenameRefactoring, ExtractMethod, QuickFix — 5 tools, 33 tests) |
+| **Testing & Quality** | ✅ Complete (GetCodeCoverage, GetSQLExplainPlan, GetCheckRunResults — 3 tools, 13 tests) |
+| **CDS/RAP Extensions** | ✅ Complete (GetCDSImpactAnalysis, GetCDSElementInfo, DDLX/DCLS in GetSource/WriteSource) |
+| **DDIC Reads** | ✅ Complete (GetSearchHelp, GetLockObject, GetTypeGroup, AddObjectToTransport — 4 tools) |
 
 ### DSL & Workflow Usage
 
@@ -667,13 +675,11 @@ pipeline := dsl.RAPPipeline(client, "./src/", "$ZRAY", "ZTRAVEL_SB")
 ```
 
 ### Roadmap
-- **Phase 5:** Graph Traversal & Analysis (Design: Reports 005-007)
-- **Phase 6:** Standard API Surface Scraper (Design: Report 006)
-- **Phase 7:** Test Intelligence (Design: Report 008)
-- Transport Management
-- ATC Integration
-- CDS View Support
-- RAP/BDEF Support
+See [docs/FUTURE-PLAN.md](docs/FUTURE-PLAN.md) for the full development plan.
+- **Priority 1:** Intelligence Layer — impact analysis, dead code, semantic search, SQL performance
+- **Priority 2:** Workflow Enhancement — DSL conditionals/parallel, pre-built workflow templates
+- **Priority 3:** CI/CD Integration — GitHub/GitLab Actions, ATC as PR comments, multi-system transport
+- **Priority 4:** AI Enhancement — autonomous RCA, coverage-driven test gen, AI-guided refactoring
 
 ---
 
