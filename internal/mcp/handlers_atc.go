@@ -63,7 +63,10 @@ func (s *Server) handleRunATCCheck(ctx context.Context, request mcp.CallToolRequ
 	}
 
 	out := output{Summary: sum, Worklist: result}
-	outputJSON, _ := json.MarshalIndent(out, "", "  ")
+	outputJSON, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return newToolResultError(fmt.Sprintf("serializing result: %v", err)), nil
+	}
 	return mcp.NewToolResultText(string(outputJSON)), nil
 }
 
@@ -83,10 +86,10 @@ func (s *Server) handleRunATCCheckTransport(ctx context.Context, request mcp.Cal
 		maxResults = int(mr)
 	}
 
-	// Get transport objects
+	// Get transport objects (requires --enable-transports or --allow-transportable-edits)
 	trInfo, err := s.adtClient.GetTransport(ctx, transport)
 	if err != nil {
-		return newToolResultError(fmt.Sprintf("GetTransport failed: %v", err)), nil
+		return newToolResultError(fmt.Sprintf("GetTransport failed: %v\nHint: RunATCCheckTransport requires transport access. Use --enable-transports flag.", err)), nil
 	}
 
 	// Collect ADT URLs for ABAP source objects (deduplicated)
@@ -101,7 +104,7 @@ func (s *Server) handleRunATCCheckTransport(ctx context.Context, request mcp.Cal
 	}
 
 	if len(objectURLs) == 0 {
-		return mcp.NewToolResultText(fmt.Sprintf("Transport %s contains no ABAP source objects (CLAS, INTF, PROG, FUGR)", transport)), nil
+		return mcp.NewToolResultText(fmt.Sprintf("Transport %s contains no R3TR-level ATC-checkable objects (CLAS, INTF, PROG, FUGR, DCLS, DDLS, BDEF). LIMU sub-objects are covered via their parent R3TR entries.", transport)), nil
 	}
 
 	result, err := s.adtClient.RunATCCheckObjects(ctx, objectURLs, variant, maxResults)
@@ -144,7 +147,10 @@ func (s *Server) handleRunATCCheckTransport(ctx context.Context, request mcp.Cal
 	}
 
 	out := output{Summary: sum, Worklist: result}
-	outputJSON, _ := json.MarshalIndent(out, "", "  ")
+	outputJSON, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return newToolResultError(fmt.Sprintf("serializing result: %v", err)), nil
+	}
 	return mcp.NewToolResultText(string(outputJSON)), nil
 }
 
@@ -154,6 +160,9 @@ func (s *Server) handleGetATCCustomizing(ctx context.Context, request mcp.CallTo
 		return newToolResultError(fmt.Sprintf("Failed to get ATC customizing: %v", err)), nil
 	}
 
-	output, _ := json.MarshalIndent(result, "", "  ")
+	output, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return newToolResultError(fmt.Sprintf("serializing result: %v", err)), nil
+	}
 	return mcp.NewToolResultText(string(output)), nil
 }

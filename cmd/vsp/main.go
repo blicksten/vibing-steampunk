@@ -66,7 +66,7 @@ func init() {
 	rootCmd.Flags().StringVar(&cfg.Client, "client", "001", "SAP client number")
 	rootCmd.Flags().StringVar(&cfg.Language, "language", "EN", "SAP language")
 	rootCmd.Flags().BoolVar(&cfg.InsecureSkipVerify, "insecure", false, "Skip TLS certificate verification")
-	rootCmd.Flags().DurationVar(&cfg.Timeout, "timeout", 0, "HTTP request timeout (e.g., 120s, 5m). Default: 60s")
+	rootCmd.Flags().DurationVar(&cfg.Timeout, "timeout", 60*time.Second, "HTTP request timeout (e.g., 120s, 5m, 0 = no timeout)")
 
 	// Cookie authentication
 	rootCmd.Flags().String("cookie-file", "", "Path to cookie file in Netscape format")

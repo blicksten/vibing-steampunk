@@ -112,9 +112,7 @@ func NewServer(cfg *Config) *Server {
 	if cfg.Verbose {
 		opts = append(opts, adt.WithVerbose())
 	}
-	if cfg.Timeout > 0 {
-		opts = append(opts, adt.WithTimeout(cfg.Timeout))
-	}
+	opts = append(opts, adt.WithTimeout(cfg.Timeout))
 
 	// Configure safety settings
 	safety := adt.UnrestrictedSafetyConfig() // Default: unrestricted for backwards compatibility
@@ -1228,7 +1226,7 @@ func (s *Server) registerTools(mode string, disabledGroups string, toolsConfig m
 	// RunATCCheckTransport - Run ATC on all ABAP source objects in a transport
 	if shouldRegister("RunATCCheckTransport") {
 		s.mcpServer.AddTool(mcp.NewTool("RunATCCheckTransport",
-			mcp.WithDescription("Run ATC (ABAP Test Cockpit) code quality check on all ABAP source objects (CLAS, INTF, PROG, FUGR) in a transport request. Runs a single ATC job for all objects at once. Priority: 1=Error, 2=Warning, 3=Info."),
+			mcp.WithDescription("Run ATC (ABAP Test Cockpit) code quality check on all ABAP source objects (CLAS, INTF, PROG, FUGR, DCLS, DDLS, BDEF) in a transport request. Only R3TR-level objects are checked; LIMU sub-objects are covered via their parent. Runs a single ATC job for all objects at once. Priority: 1=Error, 2=Warning, 3=Info. Requires --enable-transports."),
 			mcp.WithString("transport",
 				mcp.Required(),
 				mcp.Description("Transport request number (e.g., 'NPLK900001')"),

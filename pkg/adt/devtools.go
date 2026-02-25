@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -880,9 +881,10 @@ func (c *Client) GetATCCheckVariant(ctx context.Context, variant string) (string
 		}
 	}
 
-	resp, err := c.transport.Request(ctx, fmt.Sprintf("/sap/bc/adt/atc/worklists?checkVariant=%s", variant), &RequestOptions{
+	resp, err := c.transport.Request(ctx, "/sap/bc/adt/atc/worklists", &RequestOptions{
 		Method: http.MethodPost,
 		Accept: "text/plain",
+		Query:  url.Values{"checkVariant": {variant}},
 	})
 	if err != nil {
 		return "", fmt.Errorf("getting ATC check variant: %w", err)
@@ -911,7 +913,7 @@ func (c *Client) CreateATCRunMulti(ctx context.Context, worklistID string, objec
 
 	var refs strings.Builder
 	for _, u := range objectURLs {
-		refs.WriteString(fmt.Sprintf("\t\t\t\t<adtcore:objectReference adtcore:uri=\"%s\"/>\n", u))
+		refs.WriteString(fmt.Sprintf("\t\t\t\t<adtcore:objectReference adtcore:uri=\"%s\"/>\n", xmlEscape(u)))
 	}
 
 	body := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
@@ -924,11 +926,12 @@ func (c *Client) CreateATCRunMulti(ctx context.Context, worklistID string, objec
 	</objectSets>
 </atc:run>`, maxResults, refs.String())
 
-	resp, err := c.transport.Request(ctx, fmt.Sprintf("/sap/bc/adt/atc/runs?worklistId=%s", worklistID), &RequestOptions{
+	resp, err := c.transport.Request(ctx, "/sap/bc/adt/atc/runs", &RequestOptions{
 		Method:      http.MethodPost,
 		Body:        []byte(body),
-		ContentType: "application/xml",
+		ContentType: "application/vnd.sap.atc.run.parameters.v1+xml",
 		Accept:      "application/xml",
+		Query:       url.Values{"worklistId": {worklistID}},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("creating ATC run: %w", err)
@@ -943,7 +946,7 @@ func TransportObjectToADTURL(pgmid, objType, name string) string {
 	if pgmid != "R3TR" {
 		return ""
 	}
-	encodedName := strings.ToLower(strings.ReplaceAll(name, "/", "%2f"))
+	encodedName := url.PathEscape(strings.ToLower(name))
 	switch objType {
 	case "CLAS":
 		return "/sap/bc/adt/oo/classes/" + encodedName
@@ -953,6 +956,12 @@ func TransportObjectToADTURL(pgmid, objType, name string) string {
 		return "/sap/bc/adt/programs/programs/" + encodedName
 	case "FUGR":
 		return "/sap/bc/adt/functions/groups/" + encodedName
+	case "DCLS":
+		return "/sap/bc/adt/acm/dcl/sources/" + encodedName
+	case "DDLS":
+		return "/sap/bc/adt/ddic/ddl/sources/" + encodedName
+	case "BDEF":
+		return "/sap/bc/adt/bo/behaviordefinitions/" + encodedName
 	default:
 		return ""
 	}
@@ -1019,11 +1028,12 @@ func parseATCRunResult(data []byte) (*ATCRunResult, error) {
 // worklistID is from CreateATCRun.
 // includeExempted controls whether to include exempted findings.
 func (c *Client) GetATCWorklist(ctx context.Context, worklistID string, includeExempted bool) (*ATCWorklist, error) {
-	url := fmt.Sprintf("/sap/bc/adt/atc/worklists/%s?includeExemptedFindings=%t", worklistID, includeExempted)
+	path := "/sap/bc/adt/atc/worklists/" + url.PathEscape(worklistID)
 
-	resp, err := c.transport.Request(ctx, url, &RequestOptions{
+	resp, err := c.transport.Request(ctx, path, &RequestOptions{
 		Method: http.MethodGet,
-		Accept: "application/atc.worklist.v1+xml",
+		Accept: "application/vnd.sap.atc.worklist.v1+xml",
+		Query:  url.Values{"includeExemptedFindings": {fmt.Sprintf("%t", includeExempted)}},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting ATC worklist: %w", err)
