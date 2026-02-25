@@ -1,10 +1,10 @@
 # vsp Tool Reference
 
-Complete documentation for all 126 MCP tools available in vsp.
+Complete documentation for all 127 MCP tools available in vsp.
 
 **Mode Legend:**
-- **Focused** - Available in focused mode (89 tools, default)
-- **Expert** - Only available in expert mode (126 tools total)
+- **Focused** - Available in focused mode (90 tools, default)
+- **Expert** - Only available in expert mode (127 tools total)
 
 ---
 
@@ -103,11 +103,12 @@ These tools replace 11 granular read/write operations with intelligent parameter
 
 ---
 
-## ATC (Code Quality) Tools (2 tools)
+## ATC (Code Quality) Tools (3 tools)
 
 | Tool | Description | Mode |
 |------|-------------|------|
 | `RunATCCheck` | Run ATC check, returns findings with priority (1=Error, 2=Warning, 3=Info) | Focused |
+| `RunATCCheckTransport` | Run ATC checks on all source objects in a transport request (requires `--enable-transports`) | Focused |
 | `GetATCCustomizing` | Get ATC system configuration | Expert |
 
 **Example ATC Output:**
@@ -122,6 +123,24 @@ These tools replace 11 granular read/write operations with intelligent parameter
   }
 }
 ```
+
+**RunATCCheckTransport Example:**
+```json
+{
+  "summary": {
+    "transport": "A4HK900123",
+    "objectsInRun": 5,
+    "totalObjects": 4,
+    "totalFindings": 2,
+    "errors": 0,
+    "warnings": 2,
+    "infos": 0
+  },
+  "worklist": { ... }
+}
+```
+
+**Supported Object Types:** CLAS, INTF, PROG, FUGR, DCLS, DDLS, BDEF (R3TR-level only; LIMU sub-objects covered via parent)
 
 ---
 
@@ -386,10 +405,10 @@ Execute ABAP reports with parameters and capture ALV output. Includes async patt
 
 | Mode | Tools | Description |
 |------|-------|-------------|
-| **Focused** | 89 | Essential tools for AI-assisted development |
-| **Expert** | 126 | All tools including low-level operations and RAP creation |
+| **Focused** | 90 | Essential tools for AI-assisted development |
+| **Expert** | 127 | All tools including low-level operations and RAP creation |
 
 **Token Savings with Focused Mode:**
 - Tool definitions: ~30% reduction (~10,000 → ~7,000 tokens)
 - Typical workflow: reduced tool selection overhead
-- Decision clarity: 89 choices instead of 126
+- Decision clarity: 90 choices instead of 127

@@ -29,7 +29,7 @@ This project leverages multiple MCP servers for comprehensive development capabi
 - **Read:** GetSource, GetClassInfo, GetTable, SearchObject
 - **Search:** SourceSearch (HANA fulltext), GrepObjects, GrepPackages
 - **Write:** WriteSource, EditSource, CreateTable
-- **Test:** RunUnitTests, RunATCCheck, SyntaxCheck
+- **Test:** RunUnitTests, RunATCCheck, RunATCCheckTransport, SyntaxCheck
 - **Debug:** SetBreakpoint, DebuggerListen, DebuggerAttach, AMDPDebuggerStart
 - **Analysis:** GetCallGraph, GetCalleesOf, GetCallersOf, FindReferences
 - **Deploy:** Activate, ActivatePackage, MoveObject, InstallZADTVSP
@@ -182,7 +182,7 @@ Playwright: browser_take_screenshot for visual verification
 
 ## Project Overview
 
-**vsp** is a Go-native MCP (Model Context Protocol) server for SAP ABAP Development Tools (ADT). It provides a single-binary distribution with 97 essential tools (focused mode, default) or 132 complete tools (expert mode) for use with Claude and other MCP-compatible LLMs.
+**vsp** is a Go-native MCP (Model Context Protocol) server for SAP ABAP Development Tools (ADT). It provides a single-binary distribution with 98 essential tools (focused mode, default) or 133 complete tools (expert mode) for use with Claude and other MCP-compatible LLMs.
 
 ## Quick Reference
 
@@ -222,6 +222,7 @@ SAP_URL=http://host:50000 SAP_USER=user SAP_PASSWORD=pass ./vsp
 | `SAP_CLIENT` / `--client` | SAP client number (default: 001) |
 | `SAP_LANGUAGE` / `--language` | SAP language (default: EN) |
 | `SAP_INSECURE` / `--insecure` | Skip TLS verification (default: false) |
+| `SAP_TIMEOUT` / `--timeout` | HTTP request timeout (e.g., `120s`, `5m`, `0` = no timeout). Default: 60s |
 | `SAP_COOKIE_FILE` / `--cookie-file` | Path to Netscape-format cookie file |
 | `SAP_COOKIE_STRING` / `--cookie-string` | Cookie string (key1=val1; key2=val2) |
 | `SAP_MODE` / `--mode` | Tool mode: `focused` (20 tools, default) or `expert` (47 tools) |
@@ -599,7 +600,7 @@ When creating a new report:
 
 | Metric | Value |
 |--------|-------|
-| **Tools** | 145 (103 focused, 145 expert) |
+| **Tools** | 146 (104 focused, 146 expert) |
 | **Unit Tests** | 345 |
 | **Integration Tests** | 56 |
 | **Platforms** | 9 |
@@ -689,6 +690,39 @@ See [docs/FUTURE-PLAN.md](docs/FUTURE-PLAN.md) for the full development plan.
 - **Priority 2:** Workflow Enhancement — DSL conditionals/parallel, pre-built workflow templates
 - **Priority 3:** CI/CD Integration — GitHub/GitLab Actions, ATC as PR comments, multi-system transport
 - **Priority 4:** AI Enhancement — autonomous RCA, coverage-driven test gen, AI-guided refactoring
+
+---
+
+## Last Session Reference (2026-02-25)
+
+### Objective: RunATCCheckTransport + Security Hardening — COMPLETED ✅
+
+Added `RunATCCheckTransport` tool and `--timeout` / `SAP_TIMEOUT` config. Full double audit performed (3 specialists + Chief Architect). All blocking issues fixed.
+
+### What Was Done
+
+1. ✅ **RunATCCheckTransport** — ATC check on all R3TR source objects in a transport request
+   - Supports CLAS, INTF, PROG, FUGR, DCLS, DDLS, BDEF (LIMU sub-objects covered via parent)
+   - Requires `--enable-transports` flag; returns clear hint if missing
+   - Files: `pkg/adt/devtools.go` (CreateATCRunMulti, TransportObjectToADTURL, RunATCCheckObjects), `internal/mcp/handlers_atc.go` (handleRunATCCheckTransport), `internal/mcp/server.go` (registration)
+
+2. ✅ **`--timeout` / `SAP_TIMEOUT`** — Configurable HTTP request timeout
+   - Default: 60s (set as cobra default), `--timeout=0` = no timeout
+   - File: `cmd/vsp/main.go` — `DurationVar` flag + viper binding
+
+3. ✅ **Security hardening** (from double audit: 3 specialists + Chief Architect)
+   - XML escaping for ATC object URLs (`xmlEscape()` function in devtools.go)
+   - Correct versioned Content-Type: `application/vnd.sap.atc.run.parameters.v1+xml`
+   - `url.PathEscape()` for URL path segments (namespace object support `/VENDOR/NAME`)
+   - `url.Values` for all query parameters (variant, worklistId)
+   - Correct Accept header: `application/vnd.sap.atc.worklist.v1+xml`
+   - `json.MarshalIndent` error handling in all 3 ATC handlers (was silently ignored)
+
+### TODO
+
+- [ ] **Re-add ALV capture for RunReport**
+- [ ] **Test SAP GUI breakpoint sharing** - Set breakpoint via vsp, trigger in SAP GUI
+- [ ] **Integration tests** for RunATCCheckTransport (requires SAP system with transport)
 
 ---
 

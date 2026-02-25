@@ -11,6 +11,13 @@
 
 ## What's New
 
+**v2.27.0** - RunATCCheckTransport & Configurable Timeout
+- **RunATCCheckTransport**: Run ATC code quality checks on all objects in a transport request
+- **`--timeout` / `SAP_TIMEOUT`**: Configurable HTTP request timeout (e.g., `120s`, `5m`, `0` = no timeout; default: 60s)
+- **DCLS/DDLS/BDEF Support**: ATC checks now cover CDS access controls, CDS views, and behavior definitions
+- **Security Hardened**: XML injection protection, proper URL encoding for `/NAMESPACE/` objects, versioned Content-Type headers
+- Requires `--enable-transports` flag to access transport objects
+
 **v2.26.1** - Version History & Object Comparison
 - **GetRevisions**: List version history for any ABAP object (dates, authors, transports)
 - **GetRevisionSource**: Retrieve source code of any specific version
@@ -72,7 +79,7 @@
 - **GetClassInfo**: Quick class metadata via CAI (methods, attrs, interfaces)
 - **CreateTable**: Create DDIC tables from simple JSON definition
 - **GetSystemInfo**: Fixed to use SQL (CVERS/T000) - works across all SAP versions
-- **89 Focused / 126 Expert Tools** as of v2.26.1
+- **90 Focused / 127 Expert Tools** as of v2.27.0
 
 **v2.18.1** - Interactive CLI Debugger
 - **`vsp debug` Command**: Standalone interactive ABAP debugger
@@ -160,7 +167,7 @@
 - **7 UI5/BSP Tools**: List apps, read files, search content, view manifests
 - **AMDP Debugger**: 5 tools for HANA stored procedure debugging
 - **Tool Groups**: Selectively disable features (`--disabled-groups 5THD`)
-- **126 Total Tools**: 89 focused mode, 126 expert mode
+- **127 Total Tools**: 90 focused mode, 127 expert mode
 
 **v2.8.0** - Full Debug Session Support
 - **DebuggerAttach/Detach** - Attach to caught debuggees, release sessions
@@ -181,7 +188,7 @@
 
 ---
 
-**Single binary** with **89 focused tools** (default) or **126 expert tools** for AI-assisted ABAP development.
+**Single binary** with **90 focused tools** (default) or **127 expert tools** for AI-assisted ABAP development.
 
 ## Key Features
 
@@ -342,6 +349,7 @@ SAP_PASSWORD=secret
 | `--mode` | `SAP_MODE` | `focused` (default) or `expert` |
 | `--cookie-file` | `SAP_COOKIE_FILE` | Netscape cookie file |
 | `--insecure` | `SAP_INSECURE` | Skip TLS verification |
+| `--timeout` | `SAP_TIMEOUT` | HTTP request timeout (e.g., `120s`, `5m`, `0` = no timeout; default: 60s) |
 | `--terminal-id` | `SAP_TERMINAL_ID` | SAP GUI terminal ID for cross-tool debugging |
 | `--allow-transportable-edits` | `SAP_ALLOW_TRANSPORTABLE_EDITS` | Enable editing transportable objects |
 | `--allowed-transports` | `SAP_ALLOWED_TRANSPORTS` | Whitelist transports (wildcards: `A4HK*`) |
@@ -658,11 +666,11 @@ See [AI-Powered RCA Workflows](reports/2025-12-05-013-ai-powered-rca-workflows.m
 
 ## Tools Reference
 
-**89 Focused Mode Tools** (see full list below):
+**90 Focused Mode Tools** (see full list below):
 - **Search:** SearchObject, SourceSearch, GrepObjects, GrepPackages
 - **Read:** GetSource, GetTable, GetTableContents, RunQuery, GetPackage, GetFunctionGroup, GetCDSDependencies, GetMessages
 - **Write:** WriteSource, EditSource, CreateObject, DeleteObject, RenameObject, ImportFromFile, ExportToFile, MoveObject
-- **Dev:** SyntaxCheck, RunUnitTests, RunATCCheck, Activate, ActivatePackage, PrettyPrint, GetInactiveObjects, CreatePackage, CreateTable, CompareSource, CloneObject, GetClassInfo, LockObject, UnlockObject
+- **Dev:** SyntaxCheck, RunUnitTests, RunATCCheck, RunATCCheckTransport, Activate, ActivatePackage, PrettyPrint, GetInactiveObjects, CreatePackage, CreateTable, CompareSource, CloneObject, GetClassInfo, LockObject, UnlockObject
 - **Version History:** GetRevisions, GetRevisionSource, CompareVersions
 - **Intelligence:** FindDefinition, FindReferences, ExecuteABAP, GetAbapHelp, GetFeatures
 - **Code Analysis:** GetCallGraph, GetObjectStructure, GetCallersOf, GetCalleesOf, AnalyzeCallGraph, CompareCallGraphs, TraceExecution
@@ -676,7 +684,7 @@ See [AI-Powered RCA Workflows](reports/2025-12-05-013-ai-powered-rca-workflows.m
 - **Reports:** RunReport, RunReportAsync, GetAsyncResult, GetVariants, GetTextElements, SetTextElements
 - **Install:** InstallZADTVSP, InstallAbapGit, ListDependencies, InstallDummyTest
 
-See [README_TOOLS.md](README_TOOLS.md) for complete tool documentation (126 tools).
+See [README_TOOLS.md](README_TOOLS.md) for complete tool documentation (127 tools).
 
 <details>
 <summary><strong>Capability Matrix</strong></summary>
@@ -807,7 +815,7 @@ vibing-steampunk/
 
 | Metric | Value |
 |--------|-------|
-| **Tools** | 126 (89 focused, 126 expert) |
+| **Tools** | 127 (90 focused, 127 expert) |
 | **Unit Tests** | 238 |
 | **Platforms** | 9 (Linux, macOS, Windows × amd64/arm64/386) |
 
