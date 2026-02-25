@@ -67,6 +67,87 @@ func (s *Server) handleRunATCCheck(ctx context.Context, request mcp.CallToolRequ
 	return mcp.NewToolResultText(string(outputJSON)), nil
 }
 
+func (s *Server) handleRunATCCheckTransport(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	transport, ok := request.Params.Arguments["transport"].(string)
+	if !ok || transport == "" {
+		return newToolResultError("transport is required"), nil
+	}
+
+	variant := ""
+	if v, ok := request.Params.Arguments["variant"].(string); ok {
+		variant = v
+	}
+
+	maxResults := 100
+	if mr, ok := request.Params.Arguments["max_results"].(float64); ok && mr > 0 {
+		maxResults = int(mr)
+	}
+
+	// Get transport objects
+	trInfo, err := s.adtClient.GetTransport(ctx, transport)
+	if err != nil {
+		return newToolResultError(fmt.Sprintf("GetTransport failed: %v", err)), nil
+	}
+
+	// Collect ADT URLs for ABAP source objects (deduplicated)
+	seen := make(map[string]bool)
+	var objectURLs []string
+	for _, obj := range trInfo.Objects {
+		url := adt.TransportObjectToADTURL(obj.PgmID, obj.Type, obj.Name)
+		if url != "" && !seen[url] {
+			seen[url] = true
+			objectURLs = append(objectURLs, url)
+		}
+	}
+
+	if len(objectURLs) == 0 {
+		return mcp.NewToolResultText(fmt.Sprintf("Transport %s contains no ABAP source objects (CLAS, INTF, PROG, FUGR)", transport)), nil
+	}
+
+	result, err := s.adtClient.RunATCCheckObjects(ctx, objectURLs, variant, maxResults)
+	if err != nil {
+		return newToolResultError(fmt.Sprintf("ATC check failed: %v", err)), nil
+	}
+
+	// Format output with summary
+	type summary struct {
+		Transport     string `json:"transport"`
+		ObjectsInRun  int    `json:"objectsInRun"`
+		TotalObjects  int    `json:"totalObjects"`
+		TotalFindings int    `json:"totalFindings"`
+		Errors        int    `json:"errors"`
+		Warnings      int    `json:"warnings"`
+		Infos         int    `json:"infos"`
+	}
+	type output struct {
+		Summary  summary          `json:"summary"`
+		Worklist *adt.ATCWorklist `json:"worklist"`
+	}
+
+	sum := summary{
+		Transport:    transport,
+		ObjectsInRun: len(objectURLs),
+		TotalObjects: len(result.Objects),
+	}
+	for _, obj := range result.Objects {
+		sum.TotalFindings += len(obj.Findings)
+		for _, f := range obj.Findings {
+			switch f.Priority {
+			case 1:
+				sum.Errors++
+			case 2:
+				sum.Warnings++
+			default:
+				sum.Infos++
+			}
+		}
+	}
+
+	out := output{Summary: sum, Worklist: result}
+	outputJSON, _ := json.MarshalIndent(out, "", "  ")
+	return mcp.NewToolResultText(string(outputJSON)), nil
+}
+
 func (s *Server) handleGetATCCustomizing(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	result, err := s.adtClient.GetATCCustomizing(ctx)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/oisee/vibing-steampunk/internal/mcp"
@@ -65,6 +66,7 @@ func init() {
 	rootCmd.Flags().StringVar(&cfg.Client, "client", "001", "SAP client number")
 	rootCmd.Flags().StringVar(&cfg.Language, "language", "EN", "SAP language")
 	rootCmd.Flags().BoolVar(&cfg.InsecureSkipVerify, "insecure", false, "Skip TLS certificate verification")
+	rootCmd.Flags().DurationVar(&cfg.Timeout, "timeout", 0, "HTTP request timeout (e.g., 120s, 5m). Default: 60s")
 
 	// Cookie authentication
 	rootCmd.Flags().String("cookie-file", "", "Path to cookie file in Netscape format")
@@ -107,6 +109,7 @@ func init() {
 	viper.BindPFlag("client", rootCmd.Flags().Lookup("client"))
 	viper.BindPFlag("language", rootCmd.Flags().Lookup("language"))
 	viper.BindPFlag("insecure", rootCmd.Flags().Lookup("insecure"))
+	viper.BindPFlag("timeout", rootCmd.Flags().Lookup("timeout"))
 	viper.BindPFlag("cookie-file", rootCmd.Flags().Lookup("cookie-file"))
 	viper.BindPFlag("cookie-string", rootCmd.Flags().Lookup("cookie-string"))
 	viper.BindPFlag("read-only", rootCmd.Flags().Lookup("read-only"))
@@ -273,6 +276,15 @@ func resolveConfig(cmd *cobra.Command) {
 	// Insecure: flag > SAP_INSECURE env
 	if !cmd.Flags().Changed("insecure") {
 		cfg.InsecureSkipVerify = viper.GetBool("INSECURE")
+	}
+
+	// Timeout: flag > SAP_TIMEOUT env (e.g., "120s", "5m")
+	if !cmd.Flags().Changed("timeout") {
+		if v := viper.GetString("TIMEOUT"); v != "" {
+			if d, err := time.ParseDuration(v); err == nil {
+				cfg.Timeout = d
+			}
+		}
 	}
 
 	// Mode: flag > SAP_MODE env > default (focused)

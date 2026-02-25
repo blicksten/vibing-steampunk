@@ -895,8 +895,23 @@ func (c *Client) GetATCCheckVariant(ctx context.Context, variant string) (string
 // worklistID is from GetATCCheckVariant, objectURL is the ADT URL of the object.
 // maxResults limits the number of findings returned (default 100).
 func (c *Client) CreateATCRun(ctx context.Context, worklistID string, objectURL string, maxResults int) (*ATCRunResult, error) {
+	return c.CreateATCRunMulti(ctx, worklistID, []string{objectURL}, maxResults)
+}
+
+// CreateATCRunMulti starts an ATC check run on multiple objects in a single request.
+// worklistID is from GetATCCheckVariant, objectURLs are the ADT URLs of the objects.
+// maxResults limits the number of findings returned (default 100).
+func (c *Client) CreateATCRunMulti(ctx context.Context, worklistID string, objectURLs []string, maxResults int) (*ATCRunResult, error) {
 	if maxResults <= 0 {
 		maxResults = 100
+	}
+	if len(objectURLs) == 0 {
+		return nil, fmt.Errorf("no object URLs provided")
+	}
+
+	var refs strings.Builder
+	for _, u := range objectURLs {
+		refs.WriteString(fmt.Sprintf("\t\t\t\t<adtcore:objectReference adtcore:uri=\"%s\"/>\n", u))
 	}
 
 	body := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
@@ -904,11 +919,10 @@ func (c *Client) CreateATCRun(ctx context.Context, worklistID string, objectURL 
 	<objectSets xmlns:adtcore="http://www.sap.com/adt/core">
 		<objectSet kind="inclusive">
 			<adtcore:objectReferences>
-				<adtcore:objectReference adtcore:uri="%s"/>
-			</adtcore:objectReferences>
+%s			</adtcore:objectReferences>
 		</objectSet>
 	</objectSets>
-</atc:run>`, maxResults, objectURL)
+</atc:run>`, maxResults, refs.String())
 
 	resp, err := c.transport.Request(ctx, fmt.Sprintf("/sap/bc/adt/atc/runs?worklistId=%s", worklistID), &RequestOptions{
 		Method:      http.MethodPost,
@@ -921,6 +935,48 @@ func (c *Client) CreateATCRun(ctx context.Context, worklistID string, objectURL 
 	}
 
 	return parseATCRunResult(resp.Body)
+}
+
+// TransportObjectToADTURL converts a transport object (pgmid, type, name) to its ADT URL.
+// Returns empty string if the object type is not an ABAP source object.
+func TransportObjectToADTURL(pgmid, objType, name string) string {
+	if pgmid != "R3TR" {
+		return ""
+	}
+	encodedName := strings.ToLower(strings.ReplaceAll(name, "/", "%2f"))
+	switch objType {
+	case "CLAS":
+		return "/sap/bc/adt/oo/classes/" + encodedName
+	case "INTF":
+		return "/sap/bc/adt/oo/interfaces/" + encodedName
+	case "PROG":
+		return "/sap/bc/adt/programs/programs/" + encodedName
+	case "FUGR":
+		return "/sap/bc/adt/functions/groups/" + encodedName
+	default:
+		return ""
+	}
+}
+
+// RunATCCheckObjects runs ATC check on a list of ADT object URLs in a single run.
+// variant can be empty to use the system default.
+func (c *Client) RunATCCheckObjects(ctx context.Context, objectURLs []string, variant string, maxResults int) (*ATCWorklist, error) {
+	worklistID, err := c.GetATCCheckVariant(ctx, variant)
+	if err != nil {
+		return nil, fmt.Errorf("getting check variant: %w", err)
+	}
+
+	runResult, err := c.CreateATCRunMulti(ctx, worklistID, objectURLs, maxResults)
+	if err != nil {
+		return nil, fmt.Errorf("creating ATC run: %w", err)
+	}
+
+	worklist, err := c.GetATCWorklist(ctx, runResult.WorklistID, false)
+	if err != nil {
+		return nil, fmt.Errorf("getting ATC worklist: %w", err)
+	}
+
+	return worklist, nil
 }
 
 func parseATCRunResult(data []byte) (*ATCRunResult, error) {

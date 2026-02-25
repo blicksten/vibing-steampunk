@@ -87,6 +87,9 @@ type Config struct {
 	// Debugger configuration
 	TerminalID string // SAP GUI terminal ID for cross-tool breakpoint sharing
 
+	// HTTP timeout for SAP requests (default: 60s)
+	Timeout time.Duration
+
 	// Granular tool visibility (from .vsp.json)
 	// Key: tool name, Value: true=enabled, false=disabled
 	// Takes highest priority over mode and disabled groups
@@ -108,6 +111,9 @@ func NewServer(cfg *Config) *Server {
 	}
 	if cfg.Verbose {
 		opts = append(opts, adt.WithVerbose())
+	}
+	if cfg.Timeout > 0 {
+		opts = append(opts, adt.WithTimeout(cfg.Timeout))
 	}
 
 	// Configure safety settings
@@ -312,7 +318,8 @@ func (s *Server) registerTools(mode string, disabledGroups string, toolsConfig m
 		// Development tools (11)
 		"SyntaxCheck":         true,
 		"RunUnitTests":        true,
-		"RunATCCheck":         true,  // Code quality checks
+		"RunATCCheck":          true,  // Code quality checks
+		"RunATCCheckTransport": true,  // ATC check on all objects in a transport
 		"Activate":            true,  // Re-activate objects without editing
 		"ActivatePackage":     true,  // Batch activation of all inactive objects
 		"PrettyPrint":         true,  // Format ABAP code
@@ -1216,6 +1223,23 @@ func (s *Server) registerTools(mode string, disabledGroups string, toolsConfig m
 				mcp.Description("Maximum number of findings to return (default: 100)"),
 			),
 		), s.handleRunATCCheck)
+	}
+
+	// RunATCCheckTransport - Run ATC on all ABAP source objects in a transport
+	if shouldRegister("RunATCCheckTransport") {
+		s.mcpServer.AddTool(mcp.NewTool("RunATCCheckTransport",
+			mcp.WithDescription("Run ATC (ABAP Test Cockpit) code quality check on all ABAP source objects (CLAS, INTF, PROG, FUGR) in a transport request. Runs a single ATC job for all objects at once. Priority: 1=Error, 2=Warning, 3=Info."),
+			mcp.WithString("transport",
+				mcp.Required(),
+				mcp.Description("Transport request number (e.g., 'NPLK900001')"),
+			),
+			mcp.WithString("variant",
+				mcp.Description("Check variant name (empty = use system default)"),
+			),
+			mcp.WithNumber("max_results",
+				mcp.Description("Maximum number of findings to return (default: 100)"),
+			),
+		), s.handleRunATCCheckTransport)
 	}
 
 	// GetATCCustomizing - Expert mode: get ATC configuration
