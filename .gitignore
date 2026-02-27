@@ -68,3 +68,18 @@ abap-adt-api/
 
 # Session logs
 sessions/
+
+# Logs
+logs/
+*.log
+
+# Test/analysis artifacts
+.playwright-mcp/
+RAG/
+NUL
+*-test-summary.md
+corrected-test-summary.md
+test-summary.md
+class-analysis-*.md
+integration-test-*.log
+*-sc3.log
