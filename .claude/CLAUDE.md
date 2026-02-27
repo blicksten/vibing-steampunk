@@ -1,75 +1,63 @@
 ﻿<!-- DO NOT EDIT -- managed by sync.ps1 from claude-team-control -->
-<!-- Synced: 2026-02-27 11:29:15 -->
+<!-- Synced: 2026-02-27 14:54:40 -->
 <!-- Base: base/CLAUDE.md | Overlay: overlays/vibing-steampunk.md -->
 
 
 ## Requirements
 
-Never hallucinate or fabricate information. If you're unsure about anything, you MUST explicitly state your uncertainty. Say "I don't know" rather than guessing or making assumptions. Honesty about limitations is required.
+- When uncertain about any fact, API, or behavior: state "I don't know" explicitly. Never guess, hallucinate, or fabricate information.
 
 ## Language & Terminology
 
-- **All code artifacts in English.** Code, comments, docstrings, variable/function names, README files, commit messages, and diagrams — always in English.
-- **No transliteration of English technical terms into Cyrillic.** If there is no established Russian equivalent, use the original term in Latin script (git stash, merge, rebase, commit, pull request), not Cyrillic transliterations like "стэшить", "мержить", "ребейзить", "коммит".
-- **Conversation with the user** — in the language the user writes in.
+- When writing any code artifact (code, comments, docstrings, variable names, README, commit messages, diagrams): write in English.
+- When encountering an English technical term with no established Russian equivalent: use the original Latin-script term (git stash, merge, rebase, commit, pull request). Never transliterate into Cyrillic.
+- When responding to the user: match the language the user writes in.
 
 ## Research & Verification
 
-Before implementing solutions or suggesting approaches:
-- **Check documentation first** - Use WebSearch, WebFetch, or context7 MCP tools to verify your assumptions against official documentation and reliable sources
-- **Validate technical decisions** - Don't assume APIs, libraries, or patterns work in certain ways - look it up
-- **Research before building** - If you're unsure about the best approach, research available options before coding
+### Tool-First Analysis (MANDATORY)
 
-### Thorough Analysis with Tools (MANDATORY)
+Before forming any conclusion about code, architecture, or technical decisions: make at least one tool call (Read, Grep, Glob, context7, WebSearch, WebFetch, MCP, or Task agent). Never reason from memory alone.
 
-For **every request** — including plan mode — conduct analysis using actual tools, not reasoning from memory alone:
+- Before implementing a solution or suggesting an approach: query official documentation via context7, WebSearch, or WebFetch to verify assumptions.
+- Before choosing an API, library, or pattern: look up its actual behavior. Never assume.
+- When in plan mode: actively explore the codebase (read files, search patterns, check dependencies). Plans without tool-grounded analysis are invalid.
+- When analysis requires multi-file exploration or heavy research: delegate to a Task agent (Explore, Plan, general-purpose) to offload token cost from the main context.
 
-- **Always use tools for analysis** — Read files (Read, Glob, Grep), search code, examine actual project state. Never plan or analyze based solely on assumptions or cached knowledge.
-- **Leverage all relevant MCP tools** — Use configured MCP servers (context7 for docs, pal for deep analysis, etc.) to verify information, look up documentation, and validate approaches.
-- **Use specialized agents when needed** — For complex analysis, delegate to appropriate agents (Explore for codebase research, architect for design decisions, security-lead for security review).
-- **Plan mode is not passive** — In plan mode, actively explore the codebase: read relevant files, search for patterns, check dependencies, run research queries. Plans must be grounded in actual code analysis, not theoretical reasoning.
-- **No "thinking only" analysis** — If the task involves code, architecture, or technical decisions, at least one tool call (Read, Grep, Glob, WebSearch, MCP, or agent) must be made before forming conclusions.
+### PAL MCP Tools (MANDATORY)
 
-### MCP PAL for Thinking and Plan Validation (MANDATORY)
+Before concluding on architecture, bugs, or security: call the appropriate PAL tool. Never keep complex reasoning purely internal.
 
-Use the **PAL MCP server** tools to externalize reasoning, validate plans, and audit decisions — do not keep complex reasoning purely internal:
-
-- **`thinkdeep`** — Use for any non-trivial problem analysis: architecture decisions, complex bugs, performance issues, security analysis. Provides systematic hypothesis testing with expert validation. Use when reasoning requires more than surface-level analysis.
-- **`planner`** — Use when designing implementation plans, migration strategies, or multi-step workflows. Builds plans incrementally with deep reflection. Every plan created in plan mode should be validated through `planner` before presenting to the user.
-- **`consensus`** — Use for critical decisions where multiple perspectives matter: technology choices, architectural trade-offs, feature design. Consults multiple models to synthesize a balanced recommendation. Use when the decision has significant long-term impact.
-- **`codereview`** — Use after writing or modifying code. Performs systematic review covering quality, security, performance, and architecture. Do not skip this step for non-trivial changes.
-- **`precommit`** — Use before committing changes. Validates git changes, checks for security issues, assesses change impact. Provides structured pre-commit validation.
-- **`challenge`** — Use when you or the user question a previous conclusion. Forces critical re-evaluation instead of reflexive agreement.
-- **`chat`** — Use for brainstorming, getting a second opinion, or exploring ideas collaboratively with an external model.
-
-**When to use PAL (minimum requirements):**
-- Plan mode → at least `planner` or `thinkdeep` for plan validation
-- Code changes → `codereview` after implementation, `precommit` before commit
-- Architecture/design decisions → `consensus` or `thinkdeep`
-- Debugging complex issues → `thinkdeep` or `debug`
-- Disagreement or uncertainty → `challenge` or `consensus`
+| Trigger | Call |
+|---------|------|
+| Before concluding on a non-trivial problem (architecture, complex bug, performance, security) | `mcp__pal__thinkdeep` |
+| Before presenting an implementation plan to the user | `mcp__pal__planner` |
+| Before making a decision with significant long-term impact (technology choice, architecture trade-off) | `mcp__pal__consensus` |
+| After writing or modifying non-trivial code | `mcp__pal__codereview` |
+| Before committing changes (enforced by hook) | `mcp__pal__precommit` |
+| When questioning a previous conclusion or disagreeing with a finding | `mcp__pal__challenge` |
+| When brainstorming or seeking a second opinion | `mcp__pal__chat` |
+| When debugging a complex bug or investigating a multi-component issue | `mcp__pal__debug` |
 
 ## Project Structure
 
 ### General Rules (All Projects)
 
-- **Root directory** — only core application files, config files, and README.md. No scratch files, experiments, temp outputs, or logs.
-- **Standard directories** — every project should use these as needed:
+- When creating a new file: place it in the correct standard directory (see table below). Never place scratch files, experiments, temp outputs, or logs in the project root.
+- When creating a new top-level directory: document its purpose in README.md or docs/ before committing.
 
 | Directory | Purpose | Rules |
 |-----------|---------|-------|
 | `docs/` | Documentation | ROADMAP.md, ANALYSIS.md, ARCHITECTURE.md, AGENTS.md |
 | `tests/` | Test files | Mirror source structure, prefix with `test_` |
 | `logs/` | Log outputs | Gitignored, created at runtime, never committed |
-| `_archive/` | Backups and temp files | Database backups, old versions, scratch — gitignored |
-| `.claude/` | Claude Code config | **Managed by sync.ps1 — NEVER edit directly** |
+| `_archive/` | Backups and temp files | Database backups, old versions, scratch -- gitignored |
+| `.claude/` | Claude Code config | **Managed by sync.ps1 -- NEVER edit directly** |
 
-- **Naming conventions:**
-  - Directories and non-Python files: `kebab-case` (e.g., `sync-check.py`, `plan-feature.md`)
-  - Python modules: `snake_case` (e.g., `file_util.py`, `test_router.py`)
-  - Uppercase exceptions: `CLAUDE.md`, `README.md`, `ROADMAP.md`, `ANALYSIS.md`
-- **Never** put temporary files, test outputs, logs, or experimental scripts in the project root
-- **Never** create top-level directories without documenting their purpose
+**Naming conventions:**
+- Directories and non-Python files: `kebab-case` (e.g., `sync-check.py`, `plan-feature.md`)
+- Python modules: `snake_case` (e.g., `file_util.py`, `test_router.py`)
+- Uppercase exceptions: `CLAUDE.md`, `README.md`, `ROADMAP.md`, `ANALYSIS.md`
 
 ### Config Repo Structure (claude-team-control)
 
@@ -77,36 +65,36 @@ This is the **source of truth** for all shared rules, agents, and skills. Edits 
 
 | Directory/File | Purpose | File format |
 |----------------|---------|-------------|
-| `agents/` | Agent definitions — one `*.md` per agent | YAML frontmatter + markdown prompt |
-| `skills/` | Slash-command definitions — one `*.md` per skill | YAML frontmatter + markdown prompt |
-| `overlays/` | Per-project CLAUDE.md additions — one `*.md` per project | Markdown (appended after base) |
-| `base/CLAUDE.md` | **Single source of truth** for shared rules | Markdown — the ONLY file in `base/` |
+| `agents/` | Agent definitions -- one `*.md` per agent | YAML frontmatter + markdown prompt |
+| `skills/` | Slash-command definitions -- one `*.md` per skill | YAML frontmatter + markdown prompt |
+| `overlays/` | Per-project CLAUDE.md additions -- one `*.md` per project | Markdown (appended after base) |
+| `base/CLAUDE.md` | **Single source of truth** for shared rules | Markdown -- the ONLY file in `base/` |
 | `orchestrator/` | MCP server Python package (flat layout) | Python modules, `pyproject.toml` |
 | `orchestrator/tests/` | pytest tests for the orchestrator | `test_*.py`, `conftest.py` |
 | `docs/` | Project documentation | Markdown |
 | `scripts/` | Utility scripts (sync-check, templates) | Python, PowerShell |
 | `hooks/` | Claude Code hook scripts | PowerShell |
 | `templates/` | Templates for new agents/projects | Markdown |
-| `projects.json` | Project registry (paths, overlays, exclusions) | JSON — committed |
-| `projects.local.json` | User-specific path overrides | JSON — **gitignored, never committed** |
-| `providers.json` | Multi-model provider config | JSON — committed, **NOT synced** to projects |
+| `projects.json` | Project registry (paths, overlays, exclusions) | JSON -- committed |
+| `projects.local.json` | User-specific path overrides | JSON -- **gitignored, never committed** |
+| `providers.json` | Multi-model provider config | JSON -- committed, **NOT synced** to projects |
 | `sync.ps1` | PowerShell sync distribution script | PowerShell with UTF-8 BOM |
 
-**Placement rules — where to put new files:**
-- New agent → `agents/<name>.md` (kebab-case, YAML frontmatter required)
-- New skill → `skills/<name>.md` (kebab-case, YAML frontmatter required)
-- New project overlay → `overlays/<project-key>.md` (name must match key in `projects.json`)
-- New orchestrator module → `orchestrator/<name>.py` (flat layout, direct imports only — no relative imports)
-- New orchestrator test → `orchestrator/tests/test_<module>.py`
-- New utility script → `scripts/<name>.py` or `scripts/<name>.ps1`
-- New hook → `hooks/<name>.ps1`
-- New documentation → `docs/<NAME>.md`
+**When creating a new file, place it by type:**
+- New agent: `agents/<name>.md` (kebab-case, YAML frontmatter required)
+- New skill: `skills/<name>.md` (kebab-case, YAML frontmatter required)
+- New project overlay: `overlays/<project-key>.md` (name must match key in `projects.json`)
+- New orchestrator module: `orchestrator/<name>.py` (flat layout, direct imports only -- no relative imports)
+- New orchestrator test: `orchestrator/tests/test_<module>.py`
+- New utility script: `scripts/<name>.py` or `scripts/<name>.ps1`
+- New hook: `hooks/<name>.ps1`
+- New documentation: `docs/<NAME>.md`
 
-**Prohibited:**
+**Prohibited (never do these):**
 - Do NOT create files in `base/` other than `CLAUDE.md`
 - Do NOT put agent/skill files outside their designated directories
 - Do NOT add Python packages to orchestrator without updating `pyproject.toml`
-- Do NOT edit `projects.local.json` in commits — it is user-specific and gitignored
+- Do NOT edit `projects.local.json` in commits -- it is user-specific and gitignored
 - Do NOT store secrets, credentials, or API keys anywhere in this repo
 
 ### Target Project `.claude/` Directory
@@ -115,39 +103,32 @@ This is the **source of truth** for all shared rules, agents, and skills. Edits 
 
 | File/Directory | Contents | Editable? |
 |----------------|----------|-----------|
-| `.claude/CLAUDE.md` | Composed from `base/CLAUDE.md` + project overlay | **NO** — overwritten by sync |
-| `.claude/agents/*.md` | Synced agent definitions | **NO** — overwritten by sync |
-| `.claude/commands/*.md` | Synced skill definitions | **NO** — overwritten by sync |
-| `.claude/.sync-manifest.json` | File hashes for desync detection | **NO** — auto-generated, gitignored |
+| `.claude/CLAUDE.md` | Composed from `base/CLAUDE.md` + project overlay | **NO** -- overwritten by sync |
+| `.claude/agents/*.md` | Synced agent definitions | **NO** -- overwritten by sync |
+| `.claude/commands/*.md` | Synced skill definitions | **NO** -- overwritten by sync |
+| `.claude/.sync-manifest.json` | File hashes for desync detection | **NO** -- auto-generated, gitignored |
 
-- **All files in `.claude/` are managed by sync.ps1** — local edits will be overwritten on next sync
-- To modify rules → edit `base/CLAUDE.md` or `overlays/<project>.md` in the config repo, then run `/sync`
-- To add/exclude agents per project → edit `exclude_agents` in `projects.json`, then run `/sync`
-- To add/remove skills per project → edit `include_skills` in `projects.json`, then run `/sync`
+- When modifying rules: edit `base/CLAUDE.md` or `overlays/<project>.md` in the config repo, then run `/sync`. Never edit `.claude/CLAUDE.md` directly.
+- When adding/excluding agents per project: edit `exclude_agents` in `projects.json`, then run `/sync`.
+- When adding/removing skills per project: edit `include_skills` in `projects.json`, then run `/sync`.
 
 ## Agent & Tool Usage
 
-- **Use all available MCP tools** - Leverage all configured MCP servers when relevant to the task
-- **Use specialized agents** - Utilize Task tool with appropriate agents (Explore, Plan, Bash, etc.) for complex tasks
-- **Create agents when needed** - If a repetitive task pattern emerges that would benefit from a specialized agent:
-  1. Create the agent with clear responsibilities
-  2. Document it in project docs (README.md or docs/AGENTS.md)
-  3. Update these instructions to reference the new agent
-- **Parallel execution** - Run independent tasks in parallel using multiple tool calls in a single message
-- **Agent collaboration** - Agents may request help from other specialists via the NEEDS ASSISTANCE protocol. The orchestrator (or main context) handles chaining.
+- When a task requires information from an MCP server: call it. Never skip available MCP tools when they are relevant.
+- When a task is complex (multi-file, multi-domain, deep analysis): delegate to a specialized agent via Task tool (Explore, Plan, Bash, general-purpose).
+- When a repetitive task pattern emerges: create a new agent definition, document it in `docs/AGENTS.md`, and update these instructions.
+- When multiple independent tool calls are needed: batch them in a single message. Never make sequential calls where parallel is possible.
 
 ## Automatic Task Routing (MANDATORY)
 
-Before starting ANY implementation, assess the task and route it automatically. Users should NOT need to type `/orchestrate` or agent names — the system must select the right workflow on its own.
+Before starting ANY implementation: assess the task scope and route it. Never ask the user "should I use an agent?" -- decide and proceed.
 
-### Assessment criteria
-
-Evaluate every incoming task against these signals:
+### Assessment Criteria
 
 | Signal | Threshold | Route to |
 |--------|-----------|----------|
 | Files affected | >3 files | Pipeline or agents |
-| Architecture change | Any (new component, API, data model) | `architect` agent → pipeline |
+| Architecture change | Any (new component, API, data model) | `architect` agent, then pipeline |
 | Security surface | Auth, input validation, crypto, secrets | `security-lead` agent |
 | Bug complexity | Multi-component, race condition, data corruption | `/orchestrate bugfix` pipeline |
 | New feature | Any user-facing feature | `/orchestrate feature` pipeline |
@@ -155,405 +136,361 @@ Evaluate every incoming task against these signals:
 | Audit request | Plan review, risk assessment | `lead-auditor` agent (triggers L1 CV) |
 | Deployment | Any release, deploy, migration | `/orchestrate deploy` pipeline |
 
-### Routing decision tree
+### Routing Decision
 
 ```
 User request arrives
-       │
+       |
   Is it a question / exploration / reading only?
-       │
-  ┌────┴────┐
+       |
+  +----+----+
  YES        NO (implementation needed)
-  │         │
-  ▼         ▼
+  |         |
+  v         v
 Answer    Assess scope:
-directly  │
-          ├─ Single file, cosmetic/trivial fix? → Implement directly
-          │
-          ├─ Single file, logic/security change? → Use relevant agent
-          │    (code-reviewer, security-lead, architect)
-          │    Agent's L1 CV Protocol activates automatically
-          │
-          ├─ Multiple files, one concern? → Use relevant agent(s)
-          │    Launch agents in sequence, pass context between them
-          │    L1 CV activates in each CV-enabled agent
-          │
-          └─ Multiple files, multiple concerns? → Use /orchestrate pipeline
+directly  |
+          +-- Single file, cosmetic/trivial fix? -> Implement directly
+          |
+          +-- Single file, logic/security change? -> Use relevant agent
+          |    (code-reviewer, security-lead, architect)
+          |
+          +-- Multiple files, one concern? -> Use relevant agent(s)
+          |    Launch agents in sequence, pass context between them
+          |
+          +-- Multiple files, multiple concerns? -> Use /orchestrate pipeline
                Select pipeline type: feature / bugfix / deploy / qa / review
-               L1 + L2 (CV-Gates) + L3 (if disputes) all activate automatically
 ```
 
-### Rules
+### Routing Rules
 
-- **When in doubt, use agents.** Over-checking wastes some tokens. Under-checking risks shipping bad code. Err toward agents.
-- **Never ask the user "should I use an agent?"** — decide based on the criteria above and proceed.
-- **Announce routing briefly** — tell the user which route was chosen and why, in one line. Example: "This touches auth + 4 files → using feature pipeline with security-lead."
-- **Single-file trivial changes** are the ONLY case where direct implementation without agents is acceptable. Examples: typo fix, comment update, adding a log line, formatting.
-- **If during implementation you discover the task is more complex than initially assessed** — stop, re-route to a heavier workflow. Do not continue with a light workflow for a heavy task.
+- When in doubt between direct implementation and agents: use agents.
+- After selecting a route: announce it in one line. Example: "This touches auth + 4 files -> using feature pipeline with security-lead."
+- When discovering mid-implementation that the task is more complex than assessed: stop. Re-route to a heavier workflow.
 
 ### MCP Orchestrator Integration
 
-Before starting any implementation task, call `orchestrator.route_task(task_description)` and follow the returned routing decision. The orchestrator provides:
+Before starting any non-trivial implementation: call `orchestrator.route_task(task_description)` and follow the returned routing decision.
 
-- **`route_task(description)`** — Analyzes task complexity. Returns: pipeline type, recommended agents, CV requirements, complexity estimate, detected signals with weights.
-- **`get_agent_info(name)`** — Returns agent metadata: tier, model, tools, CV requirement, MCP servers.
-- **`list_agents(tier?)`** — Lists available agents, optionally filtered by model tier (strategic/execution/routine).
+- **`route_task(description)`** -- returns pipeline type, recommended agents, CV requirements, complexity estimate.
+- **`get_agent_info(name)`** -- returns agent metadata: tier, model, tools, CV requirement, MCP servers.
+- **`list_agents(tier?)`** -- lists available agents, optionally filtered by model tier.
 
-**Usage rules:**
-- Call `route_task` for every non-trivial task before implementation.
+**After receiving a route_task response:**
 - Follow the returned `pipeline` and `agents` list.
-- If `cv_required` is true, cross-validation agents must participate.
-- If `llm_refinement_suggested` is true, the rule-based routing had low confidence — apply extra judgment.
-- If the orchestrator MCP server is unavailable, fall back to the manual routing rules in the "Automatic Task Routing" section above.
+- When `cv_required` is true: ensure cross-validation agents participate.
+- When `llm_refinement_suggested` is true: apply extra judgment (rule-based routing had low confidence).
+- When the orchestrator MCP server is unavailable: fall back to the manual routing rules above.
 
 ### Cross-Validation via Orchestrator (Level 2)
 
-After completing each pipeline stage involving a CV-enabled agent:
+After completing each pipeline stage involving a CV-enabled agent: call `orchestrator.cv_gate(stage_output, gate_type)` before proceeding.
 
-1. Call `orchestrator.cv_gate(stage_output, gate_type)` before proceeding to the next step
-2. If cv_gate returns `PASS` — continue to next step
-3. If cv_gate returns `HALT` — fix the identified CRITICAL issue, then re-submit the step output
-4. If cv_gate returns `DISPUTE` — call `orchestrator.cross_validate(topic, claude_analysis)` for multi-round debate
-5. If cv_gate returns `SKIP` — continue (CV temporarily unavailable, log warning)
-6. If cv_gate returns `FAIL` — report configuration error to user
+| cv_gate result | Action |
+|----------------|--------|
+| `PASS` | Continue to next step |
+| `HALT` | Fix the CRITICAL issue, re-submit the step output |
+| `DISPUTE` | Call `orchestrator.cross_validate(topic, claude_analysis)` for multi-round debate |
+| `SKIP` | Continue (CV temporarily unavailable, log warning) |
+| `FAIL` | Report configuration error to user |
 
-**Gate types:** `consensus` (architecture decisions), `codereview` (code changes), `thinkdeep` (deep analysis), `precommit` (pre-commit validation).
+**Gate types:** `consensus` (architecture), `codereview` (code), `thinkdeep` (deep analysis), `precommit` (pre-commit).
 
-PAL MCP tools (consensus, codereview, thinkdeep) remain available for **Level 1** agent-initiated cross-validation. The orchestrator's `cv_gate` provides **Level 2** pipeline-enforced cross-validation. Both coexist (defense-in-depth).
+PAL MCP tools provide **Level 1** agent-initiated CV. The orchestrator's `cv_gate` provides **Level 2** pipeline-enforced CV. Both coexist (defense-in-depth).
 
 ### Pipeline Execution via Orchestrator (Level 3)
 
-For multi-step tasks, use the orchestrator's pipeline tools instead of manually chaining agents:
+When a task requires multi-step execution: use orchestrator pipeline tools instead of manually chaining agents.
 
-- **`start_pipeline(pipeline_type, description)`** — Initialize a pipeline. Returns pipeline_id and first step instructions.
-- **`complete_step(pipeline_id, step_output)`** — Report step completion. Server runs CV-gate automatically if the step requires it. Returns next step instructions or HALT/PIPELINE_COMPLETE.
-- **`pipeline_status(pipeline_id)`** — Get current pipeline state. Use to check progress or resume after context window reset.
+- **`start_pipeline(pipeline_type, description)`** -- initialize pipeline, get pipeline_id and first step.
+- **`complete_step(pipeline_id, step_output)`** -- report step completion. Server runs CV-gate if required. Returns next step or HALT/PIPELINE_COMPLETE.
+- **`pipeline_status(pipeline_id)`** -- get current state. Use to resume after context window reset.
 
-**Pipeline types:** `feature`, `bugfix`, `deploy`, `audit`, `qa`, `review`, `refactor`, `incident`, `migration`, `spike`, `perf`, `onboard`, `docs`, `techdebt`, `deep-validate`. See `skills/orchestrate.md` for full definitions and step counts.
+**Pipeline types:** `feature`, `bugfix`, `deploy`, `audit`, `qa`, `review`, `refactor`, `incident`, `migration`, `spike`, `perf`, `onboard`, `docs`, `techdebt`, `deep-validate`.
 
-**Workflow:**
-1. Call `route_task(description)` — it returns the recommended `pipeline` type
-2. Call `start_pipeline(pipeline_type, description)` — get pipeline_id and first step
-3. Execute the step using the assigned agent
-4. Call `complete_step(pipeline_id, step_output)` — server runs CV-gate if needed
-5. If result is `HALT` — fix the issue and re-submit the same step
-6. If result has `next_step` — execute next agent and repeat from step 4
-7. If result is `PIPELINE_COMPLETE` — pipeline finished successfully
+**Execution sequence:**
+1. Call `route_task(description)` -- get recommended `pipeline` type.
+2. Call `start_pipeline(pipeline_type, description)` -- get pipeline_id and first step.
+3. Execute the step using the assigned agent.
+4. Call `complete_step(pipeline_id, step_output)` -- server runs CV-gate if needed.
+5. On `HALT`: fix the issue, re-submit the same step.
+6. On `next_step`: execute next agent, repeat from step 4.
+7. On `PIPELINE_COMPLETE`: pipeline finished.
 
-**Rules:**
-- Never skip `complete_step` — the server tracks state and enforces CV gates
-- Pipeline state is persisted to disk — survives context window resets
-- Use `pipeline_status` to resume an interrupted pipeline with full context
-- Optional steps (e.g., frontend-dev, visual-qa) are auto-skipped when not applicable
-- Halted pipelines can be resumed by re-submitting the failed step with corrected output
+**Pipeline rules:**
+- Never skip `complete_step` -- the server tracks state and enforces CV gates.
+- Pipeline state persists to disk and survives context resets.
+- After a context window reset: call `pipeline_status` to resume with full context.
+- Optional steps (e.g., frontend-dev, visual-qa) are auto-skipped when not applicable.
 
 ## Permissions
 
-- **Always allow reading log/output files** - Reading temporary output files (task logs, server output, background process output) should NEVER require user confirmation. This includes but is not limited to:
-  - Claude Code background task output files (`.output` in temp directories)
-  - Any `*.log`, `*.output`, `*.txt` files in system temp directories
-  - Server stdout/stderr output files
-  - Test runner output files
-- **Always allow reading project source files** - Reading any file within the project directory and related project directories should not require confirmation. This includes all subdirectories, config files, fixture files, test files, and documentation.
-- **Always allow reading configuration files** - Reading `.env`, `*.json`, `*.toml`, `*.yaml`, `*.cfg` files in any project directory should not require confirmation
+- When reading log/output files (`.output`, `*.log`, `*.txt` in temp dirs, server stdout/stderr, test runner output): read without asking for confirmation.
+- When reading project source files (any file within the project directory or related project directories): read without asking for confirmation.
+- When reading configuration files (`.env`, `*.json`, `*.toml`, `*.yaml`, `*.cfg` in project directories): read without asking for confirmation.
 
 ## Git & GitLab
 
-- **Push after commits** - After creating git commits, ALWAYS remind the user to push to GitLab (or offer to push). Don't let commits accumulate locally without pushing.
-- **Check unpushed commits** - At the start of a session, check `git status` and `git log origin/main..HEAD` for unpushed commits. If there are any, remind the user.
-- **Push command** - Use `git push origin main` (or the current branch name). Never force-push without explicit user approval.
+- After creating a git commit: remind the user to push to GitLab (or offer to push). Never let commits accumulate locally.
+- At the start of a session: run `git status` and `git log origin/main..HEAD`. When unpushed commits exist: notify the user immediately.
+- When pushing: use `git push origin main` (or the current branch name). Never force-push without explicit user approval.
 
 ## Independent Audit (MANDATORY)
 
-After creating any implementation plan, a structured audit **must** be conducted before the plan is approved for execution. No implementation begins without audit approval.
+After creating any implementation plan: conduct a structured audit before approving for execution. No implementation begins without audit approval.
+
+### When to Run the Audit
+
+- After plan design (before user approval / ExitPlanMode).
+- After implementing changes touching >3 files (before commit).
+- After major refactoring.
 
 ### Audit Workflow
 
-1. **Audit Leader Agent** — launch a `general-purpose` agent acting as **Lead Auditor / Team Lead**.
-   - The Lead Auditor reads the plan and determines which domain expertise is required (backend, database, security, API design, performance, etc.).
-   - The Lead Auditor delegates the review to one or more **Specialist Auditor** agents — each with clear domain scope.
+Every APPROVE verdict (specialist or Chief Architect) must include Verification Evidence (see format below). An APPROVE without evidence is invalid.
 
-2. **Specialist Auditor Agent(s)** — launched by the Lead Auditor (or in parallel by the orchestrator).
-   - Each Specialist Auditor is given a focused scope (e.g., "audit database query patterns", "audit search algorithm correctness", "audit backward compatibility").
-   - The Specialist Auditor **must verify technical assumptions** using all available means: external sources (WebSearch, context7, official docs), own knowledge/memory, and any relevant MCP tools. No single source is sufficient — cross-check when possible.
-   - **Mandatory depth requirements for audits involving code or architecture changes:**
-     - **Read actual source code** — never audit from plan text alone. Read affected files with `Read` tool, verify line ranges.
-     - **Use PAL `thinkdeep`** — externalize analysis for non-trivial domains. Surface-level reasoning is insufficient.
-     - **Verify docs via context7 or WebSearch** — every technical assumption (API behavior, library semantics, framework constraints) must be confirmed against official documentation, not assumed.
-     - **Check edge cases** — explicitly test boundary conditions, error paths, and concurrent access scenarios in the analysis.
-   - **For docs-only, config-only, or single-file trivial audits:** PAL usage is RECOMMENDED but not mandatory — consistent with Cost-Aware Development exceptions. Source code reading and documentation verification remain mandatory.
-   - The Specialist Auditor produces a verdict:
-     - **APPROVE** — no issues found, plan is sound
-     - **REJECT with findings** — list of issues ranked by severity (CRITICAL / HIGH / MEDIUM / LOW) with specific fix recommendations
-     - **ESCALATE to user** — unresolvable ambiguity or risk that requires human decision
-   - **Every verdict MUST include Verification Evidence** (see "Audit Verification Evidence" below). An APPROVE without evidence is invalid and will be rejected.
+1. **Launch Lead Auditor** -- start a `general-purpose` agent as Lead Auditor / Team Lead.
+   - The Lead Auditor reads the plan and identifies required domain expertise.
+   - The Lead Auditor delegates review to one or more Specialist Auditor agents, each with clear domain scope.
 
-3. **Chief Architect Review** — after all Specialist Auditors finish, the **Lead Auditor** performs a final holistic review as **Chief Architect**:
-   - Has access to the full picture: all specialist findings + the original plan + codebase context
-   - Focuses on **cross-domain gaps** that no single specialist could see
-   - Validates that specialist findings don't contradict each other
-   - Checks that the plan as a whole is coherent, not just that individual parts are correct
-   - **Must use PAL `consensus`** for cross-domain validation — single-model reasoning is insufficient for holistic review
-   - **Must read actual source code** for integration points between domains reviewed by different specialists
-   - Produces the same verdict: APPROVE / REJECT with findings / ESCALATE
-   - **Every verdict MUST include Verification Evidence** (see below). An APPROVE without evidence is invalid.
+2. **Specialist Auditors execute** -- launched by Lead Auditor or in parallel by orchestrator.
+   - Each Specialist receives a focused scope (e.g., "audit database query patterns", "audit backward compatibility").
+   - Before issuing any verdict: complete all applicable items in the Audit Depth Checklist (below).
+   - When auditing code or architecture changes: call `mcp__pal__thinkdeep`. Surface-level reasoning is insufficient.
+   - When auditing docs-only, config-only, or single-file trivial changes: PAL usage is recommended but not mandatory.
+   - Produce one verdict: **APPROVE** / **REJECT with findings** (CRITICAL/HIGH/MEDIUM/LOW + fix recommendations) / **ESCALATE to user**.
 
-4. **No inventing, no guessing** — auditors at all levels must not fabricate concerns or imagine problems. Only concrete, verifiable findings based on actual code analysis and documentation. If unsure — escalate to user, do not assume.
+3. **Chief Architect Review** -- after all Specialist Auditors finish, the Lead Auditor performs a holistic review:
+   - Focus on cross-domain gaps no single specialist could see. Validate that specialist findings do not contradict each other.
+   - Before issuing verdict: call `mcp__pal__consensus` for cross-domain validation and read source code at integration points.
+   - Produce verdict: APPROVE / REJECT with findings / ESCALATE.
 
-5. **Iteration** — if any audit level returns REJECT:
-   - Fix all CRITICAL and HIGH issues in the plan
-   - Re-submit to the same auditor for re-review
-   - Repeat until APPROVE or ESCALATE
-   - After specialist fixes, Chief Architect re-reviews the whole plan again
-   - **If re-audit finds CRITICAL issues in a previously APPROVED plan** — this triggers the Audit Failure Protocol (see "Zero CRITICAL on Re-audit" below). The initial audit was deficient and must be investigated.
+4. **No inventing, no guessing** -- auditors must not fabricate concerns. Only concrete, verifiable findings from actual code analysis and documentation. When unsure: ESCALATE, never assume.
+
+5. **On REJECT** -- fix all CRITICAL and HIGH issues, re-submit to the same auditor. Repeat until APPROVE or ESCALATE. After specialist fixes: Chief Architect re-reviews the whole plan.
+   - When re-audit finds CRITICAL issues in a previously APPROVED plan: trigger the Audit Failure Protocol (see "Zero CRITICAL on Re-audit").
 
 6. **Final outcome:**
-   - **All auditors + Chief Architect APPROVE** → plan is approved, implementation begins
-   - **Any level ESCALATE** → user is notified with the specific unresolved question, user makes the decision
-   - The audit summary (specialist findings + architect review + final verdict) is recorded in the plan file
+   - All auditors + Chief Architect APPROVE: implementation begins.
+   - Any level ESCALATE: notify user with the unresolved question.
+   - Record the audit summary in the plan file.
 
 ### Execution Plan Requirement
 
-After the audit is fully approved (all levels APPROVE), the final plan **must** be structured as a detailed execution roadmap before implementation begins:
+After audit approval (all levels APPROVE): structure the plan as a detailed execution roadmap before implementing.
 
-- **Phase → Steps** format: each phase contains numbered, atomic steps that can be executed independently
-- Each step has a **clear checkpoint**: what was done, what file was changed, what to verify
-- The plan must be **resumable**: if the context window is cleared or a new session starts, any developer (or agent) can read the plan file and continue from the last completed step without re-gathering context
-- Mark completed steps with `[x]` as work progresses; pending steps remain `[ ]`
-- Record commit hashes, test counts, and deviations inline after each phase completion
-- Save the plan to a persistent location (plan file or `docs/ROADMAP.md`) — not just in conversation memory
+- Format as **Phase -> Steps**: each phase contains numbered, atomic steps.
+- Each step has a **checkpoint**: what was done, what file changed, what to verify.
+- The plan must be **resumable**: readable by any developer or agent to continue from last completed step.
+- Mark completed steps with `[x]`; pending steps remain `[ ]`.
+- Record commit hashes, test counts, and deviations inline after each phase.
+- Save to `docs/ROADMAP.md` or a plan file -- never only in conversation memory.
 
 ### Per-Phase PAL Verification Gate (MANDATORY)
 
-Every phase of a phased implementation plan **must** end with a PAL verification gate before the next phase begins:
+Before starting the next phase of any phased implementation plan: complete the verification gate for the current phase.
 
-1. **Automated checks pass**: run tests (`npm test`, `pytest`, etc.) — must be green with zero failures
-2. **PAL `codereview`**: review all files changed in this phase. Any CRITICAL finding → HALT, fix, re-review before proceeding.
-3. **PAL `thinkdeep`**: deep analysis of the phase's changes for correctness, edge cases, integration risks. Any CRITICAL → HALT.
-4. Only after all automated checks pass AND both PAL tools return no CRITICAL findings: mark phase complete and proceed to the next phase.
+1. Run automated checks (`npm test`, `pytest`, etc.) -- must pass with zero failures.
+2. Call `mcp__pal__codereview` on all files changed in this phase. On any CRITICAL finding: HALT, fix, re-review.
+3. Call `mcp__pal__thinkdeep` for deep analysis of the phase's changes. On any CRITICAL: HALT.
+4. Only after all automated checks pass AND both PAL tools return no CRITICAL findings: mark phase complete and proceed.
 
 ### End-of-Plan Double Audit (MANDATORY)
 
-After **all phases** are complete and before committing:
+After all phases are complete and before committing:
 
-1. **PAL `precommit`**: full diff review — security scan, change impact assessment, no regressions
-2. **PAL `consensus`** (multi-model, ≥2 models): holistic architecture review — confirm all root-cause issues are structurally prevented, not just patched. Flag any design gaps the per-phase gates may have missed.
-3. If any finding ≥ HIGH: create a fix task, re-run the relevant phase gate, then re-run the double audit.
+1. Call `mcp__pal__precommit` -- full diff review, security scan, change impact assessment.
+2. Call `mcp__pal__consensus` (multi-model, >=2 models) -- holistic architecture review.
+3. When any finding >= HIGH: create a fix task, re-run the relevant phase gate, then re-run the double audit.
 
-**Rule**: No implementation is committed without passing the end-of-plan double audit. This is non-negotiable.
+### Audit Scope Checklist
 
-### When to run the audit
-
-- After plan design (before user approval / ExitPlanMode)
-- After implementation of changes touching >3 files (before commit)
-- After major refactoring
-
-### Audit scope checklist
-
+When auditing, check each of these:
 - Logic gaps, race conditions, missing error handling
 - Security holes (injection, XSS, auth bypass)
 - Coupling issues, backward compatibility breaks
 - Untested paths, wrong assumptions about APIs/libraries
 - Performance regressions, deployment blind spots
-- Blast radius — which other components are affected by the change
+- Blast radius -- which other components are affected
 
 ### Zero CRITICAL on Re-audit (ABSOLUTE RULE)
 
-If a plan passes audit (all levels APPROVE) and a subsequent audit, re-check, or implementation review discovers **CRITICAL-severity issues**, this constitutes an **AUDIT FAILURE** — the initial audit was deficient. This must never happen.
+When a re-audit or implementation review discovers CRITICAL issues in a previously APPROVED plan: this is an Audit Failure. The initial audit was deficient.
 
-**What this means:**
-- The initial auditors approved without sufficient depth — they missed something that should have been caught
-- The audit process failed its primary purpose: preventing CRITICAL issues from reaching implementation
-- Finding HIGH issues on re-audit is a warning; finding CRITICAL issues is unacceptable
-
-**Audit Failure Response Protocol:**
-1. **HALT** — stop all implementation immediately
-2. **Root cause analysis** — determine WHY the initial audit missed the CRITICAL issue. Document in `docs/AUDIT.md` under "Audit Failures" section
-3. **Full re-audit** — the entire plan must be re-audited from scratch with enhanced scrutiny, not just the area where the CRITICAL was found
-4. **Process update** — add the specific gap to the Audit Depth Checklist (below) to prevent recurrence
-5. **Run the deep-validate pipeline** (`/orchestrate deep-validate`) to achieve zero-finding state before proceeding. Note: deep-validate is currently skill-orchestrated only; backend pipeline registration is a follow-up task.
+**On Audit Failure:**
+1. HALT -- stop all implementation immediately.
+2. Root cause analysis -- document WHY the initial audit missed it in `docs/AUDIT.md` under "Audit Failures".
+3. Full re-audit -- re-audit the entire plan from scratch, not just the failed area.
+4. Process update -- add the gap to the Audit Depth Checklist to prevent recurrence.
+5. Run `/orchestrate deep-validate` to achieve zero-finding state. Note: deep-validate is currently skill-orchestrated only; backend pipeline registration is a follow-up task.
 
 ### Audit Verification Evidence (MANDATORY)
 
-Every auditor verdict (specialist or Chief Architect) that returns **APPROVE** must include a **Verification Evidence** section. An APPROVE without this section is invalid and will be rejected by the orchestrator.
+Every APPROVE verdict must include this section:
 
-**Required evidence format:**
 ```
 ## Verification Evidence
-- **Files read**: [list of files with line ranges actually examined]
+- **Files read**: [files with line ranges actually examined]
 - **Documentation verified**: [context7 queries or WebSearch URLs consulted]
-- **PAL tools used**: [tool name → key conclusion for each invocation]
+- **PAL tools used**: [tool name -> key conclusion]
 - **Code patterns checked**: [Grep/Glob queries run, what was verified]
-- **Edge cases analyzed**: [boundary conditions, error paths, concurrency scenarios considered]
-- **Cross-domain risks**: [integration points with other components checked]
+- **Edge cases analyzed**: [boundary conditions, error paths, concurrency scenarios]
+- **Cross-domain risks**: [integration points checked]
 ```
 
-- If an auditor cannot fill all sections — they must explain why (e.g., "no cross-domain risks — single-module change") rather than leaving sections empty
-- The evidence must be **specific** — "read the code" is not evidence; "read `router.py:45-120`, verified route registration pattern" is evidence
-- Evidence is recorded in `docs/AUDIT.md` alongside the audit verdict
+- When a section is not applicable: explain why. Never leave sections empty.
+- Evidence must be specific: "read `router.py:45-120`, verified route registration pattern" -- not "read the code".
+- Record evidence in `docs/AUDIT.md` alongside the verdict.
 
 ### Audit Depth Checklist
 
-Before issuing an APPROVE verdict, every auditor must confirm completion of all applicable items:
+Before issuing APPROVE, confirm each applicable item:
 
-- [ ] **Source code read** — all files affected by the plan were read with `Read` tool (not just referenced)
-- [ ] **Technical assumptions verified** — every claim about API behavior, library semantics, or framework constraints confirmed via context7 or WebSearch
-- [ ] **PAL analysis performed** — `thinkdeep` (specialist) or `consensus` (Chief Architect) used for non-trivial analysis
-- [ ] **Edge cases considered** — boundary values, empty inputs, concurrent access, error propagation explicitly analyzed
-- [ ] **Security surface noted** — if changes may have security implications beyond your scope, flag for Lead Auditor to assign security specialist
-- [ ] **Backward compatibility verified** — existing consumers, callers, and dependents identified and checked for breakage
-- [ ] **Test coverage assessed** — existing tests reviewed for adequacy; gaps in test coverage flagged
-- [ ] **Cross-domain integration verified** — interaction points with other modules/services checked for consistency
+- [ ] **Source code read** -- all affected files read with `Read` tool (not just referenced)
+- [ ] **Technical assumptions verified** -- every claim confirmed via context7 or WebSearch
+- [ ] **PAL analysis performed** -- `thinkdeep` (specialist) or `consensus` (Chief Architect) called
+- [ ] **Edge cases considered** -- boundary values, empty inputs, concurrent access analyzed
+- [ ] **Security surface noted** -- security implications flagged for security specialist if beyond scope
+- [ ] **Backward compatibility verified** -- existing consumers and dependents checked for breakage
+- [ ] **Test coverage assessed** -- existing tests reviewed; gaps flagged
+- [ ] **Cross-domain integration verified** -- interaction points with other modules checked
 
-Auditors must report which checklist items were completed and which were not applicable (with justification).
+Report which items were completed and which were not applicable (with justification).
 
 ### Rules Architect Agent
 
-Rules and CLAUDE.md instructions must NOT be written ad-hoc by the implementation agent. A dedicated **Rules Architect Agent** is responsible for crafting, structuring, and maintaining CLAUDE.md rules across all projects.
+When creating or modifying CLAUDE.md instructions: delegate to the Rules Architect agent. Never write rules ad-hoc from an implementation agent.
 
 **Agent profile:**
 - Type: `general-purpose` agent with role **Rules Architect**
-- Expertise: technical writing, process design, CLAUDE.md conventions, task decomposition
-- Before writing rules, the agent **must research best practices**: consult Claude Code documentation (via context7 or WebSearch), study existing CLAUDE.md patterns in the project, and review industry standards for AI agent instructions (clarity, atomicity, testability)
+- Expertise: technical writing, process design, CLAUDE.md conventions
 
-**Rule quality principles:**
-- **Atomic** — one rule = one concern, no compound sentences mixing unrelated requirements
-- **Actionable** — each rule describes a concrete action, not an abstract goal
-- **Verifiable** — it must be possible to check whether the rule was followed
-- **Non-contradictory** — no conflicts with existing rules; if replacing a rule, explicitly state what it replaces
-- **Scoped** — clearly state when the rule applies and when it doesn't
+**Before writing any rule, the Rules Architect must:**
+- Consult Claude Code documentation via context7 or WebSearch for best practices.
+- Study existing CLAUDE.md patterns in the project.
 
-**Workflow:**
-- The Rules Architect produces a draft of new/updated rules
-- The draft is reviewed by the Chief Architect (audit step 3) before being applied to any CLAUDE.md file
-- If the Rules Architect agent doesn't exist yet — create it first: define the agent prompt template and document it in `docs/AGENTS.md`
+**Rule quality requirements (every rule must satisfy all five):**
+- **Atomic** -- one rule = one concern.
+- **Actionable** -- describes a concrete action, not an abstract goal.
+- **Verifiable** -- possible to check whether followed.
+- **Non-contradictory** -- no conflicts with existing rules; replacement rules state what they replace.
+- **Scoped** -- clear when it applies and when it does not.
 
-## Database Protection (CRITICAL — NEVER VIOLATE)
+**Workflow:** Rules Architect produces a draft. Chief Architect reviews before applying to any CLAUDE.md.
 
-Enforced automatically by `protect-db.sh` hook — hook blocks destructive commands on DB paths.
+## Database Protection (CRITICAL -- NEVER VIOLATE)
 
-- **NEVER delete any database** — absolute rule, zero exceptions. Protected path patterns (any DB technology): `*.db`, `*.sqlite`, `*.sqlite3`, `*chroma*`, `chroma_db/`, `pgdata`, `*redis*data`, `*mongo*data`, `*elastic*data`, `*mysql*data`, `*_db/`
-- **Before any destructive operation on a DB path**: create backup first:
+Enforced automatically by `protect-db.sh` hook -- blocks destructive commands on DB paths.
+
+- When encountering any database file or directory (`*.db`, `*.sqlite`, `*.sqlite3`, `*chroma*`, `chroma_db/`, `pgdata`, `*redis*data`, `*mongo*data`, `*elastic*data`, `*mysql*data`, `*_db/`): NEVER delete it. Zero exceptions.
+- Before any destructive operation on a DB path: create a backup first:
   1. `cp -r <db_dir> _archive/<db>_backup_$(date +%Y-%m-%d)/`
   2. Verify: `ls -la _archive/<db>_backup_*/`
-  3. Only then proceed
-- **Allowed**: backup, copy, archive, read. **Forbidden**: `rm -rf`, `rmdir`, `shutil.rmtree()`, `DROP TABLE/DATABASE`, `docker volume rm`
-- **Adding a new database**: add its path pattern to `hooks/protect-db.sh` `DB_PATTERN` and run `/sync`
+  3. Only then proceed.
+- Allowed operations: backup, copy, archive, read. Forbidden: `rm -rf`, `rmdir`, `shutil.rmtree()`, `DROP TABLE/DATABASE`, `docker volume rm`.
+- When adding a new database to a project: add its path pattern to `hooks/protect-db.sh` `DB_PATTERN` and run `/sync`.
 
 ## Plan Continuity & Documentation (MANDATORY)
 
-When working on phased implementation plans:
-
-- **Save detailed plans to project documentation** — After completing planning or any phase, save the full plan to `docs/ROADMAP.md` with enough detail to resume from any point without additional context gathering
-- **Document all analysis** — Save comprehensive codebase analysis to `docs/ANALYSIS.md` including: architecture, all components, patterns, regex catalogs, configuration, known issues
-- **Track deviations** — When a phase produces critical changes (bug fixes, architectural decisions, pattern changes), immediately update the roadmap to reflect impact on future phases
-- **Mark completed phases** — Update `docs/ROADMAP.md` with completion status, actual test counts, and commit hashes after each phase
-- **Record learned patterns** — When discovering gotchas, document them in the roadmap's "Known Gotchas" section for future phases
-- **Update MEMORY.md** — Keep the auto-memory file current with project state
-- **Update all documentation before commit** — After all changes are implemented and tests pass, but BEFORE committing and pushing, update all relevant documentation:
-  - `docs/ROADMAP.md` — mark completed phases, record commit context, update status tables
-  - `docs/ANALYSIS.md` — reflect any architectural changes, new patterns, updated regex catalogs
-  - `docs/AGENTS.md` — if new agents were created or existing ones modified
-  - `MEMORY.md` — update project state (current phase, test counts, key lessons learned)
-  - Code comments — ensure new/changed functions have accurate docstrings
-  - This is a gate: no commit without documentation being current
+- After completing planning or any implementation phase: save the full plan to `docs/ROADMAP.md` with enough detail to resume from any point.
+- After analyzing the codebase: save findings to `docs/ANALYSIS.md` (architecture, components, patterns, regex catalogs, configuration, known issues).
+- When a phase produces critical changes: immediately update `docs/ROADMAP.md` to reflect impact on future phases.
+- After completing a phase: update `docs/ROADMAP.md` with completion status, actual test counts, and commit hashes.
+- When discovering a gotcha: add it to the roadmap's "Known Gotchas" section.
+- Before committing (gate -- do not commit without this): update all documentation:
+  - `docs/ROADMAP.md` -- mark completed phases, record commit context, update status tables.
+  - `docs/ANALYSIS.md` -- reflect architectural changes, new patterns, updated regex catalogs.
+  - `docs/AGENTS.md` -- if agents were created or modified.
+  - `MEMORY.md` -- update project state (current phase, test counts, key lessons).
+  - Code comments -- ensure new/changed functions have accurate docstrings.
 
 ## Documentation Quality (MANDATORY)
 
-All markdown documentation must be visually clear and navigable. Use rich formatting for readability in VSCode, GitLab, and GitHub.
+### When writing a document >100 lines, include:
 
-### Required formatting for documents >100 lines
+- **Table of Contents** -- anchor-linked TOC at the top.
+- **Mermaid diagrams** -- for architecture, flows, timelines, state machines, decision trees. Use `mermaid` code blocks.
+- **Collapsible sections** -- `<details><summary>...</summary>...</details>` for verbose content.
+- **Unicode emoji markers** -- use actual characters (checkmark, warning, construction), NOT GitHub shortcodes (`:white_check_mark:` etc.) -- shortcodes don't render in VSCode.
+- **Bold blockquote callouts** -- `> **Note:**`, `> **Warning:**`, `> **Important:**` with emoji prefix -- NOT `> [!NOTE]` syntax (doesn't render in VSCode).
+- **Aligned tables** -- use `:---|:---:|---:` for comparisons.
 
-- **Table of Contents** — anchor-linked TOC at the top of the file
-- **Mermaid diagrams** — for architecture, flows, timelines, state machines, decision trees. Use `mermaid` code blocks
-- **Collapsible sections** — `<details><summary>...</summary>...</details>` for verbose content (execution steps, audit details, alternative approaches)
-- **Unicode emoji markers** — use actual characters (✅ ❌ ⚠️ 🚧), NOT GitHub shortcodes (`:white_check_mark:` etc.) — shortcodes don't render in VSCode
-- **Bold blockquote callouts** — `> **📝 Note:**`, `> **⚠️ Warning:**`, `> **❗ Important:**` — NOT `> [!NOTE]` syntax (doesn't render in VSCode)
-- **Aligned tables** — use `:---|:---:|---:` for comparisons and inventories
+### When writing any document, always:
 
-### Required formatting for all documents
-
-- **Syntax-highlighted code blocks** — always specify language tag (` ```python `, ` ```typescript `, ` ```abap `, ` ```json `)
-- **Bold emphasis** for key terms and decisions
-- **Horizontal rules** (`---`) between major sections
+- Specify language tags on code blocks (` ```python `, ` ```typescript `, ` ```json `).
+- Use **bold emphasis** for key terms and decisions.
+- Place horizontal rules (`---`) between major sections.
 
 ### Compatibility rules
 
-- All formatting must render correctly in **VSCode Markdown Preview** (with bierner.markdown-mermaid extension), **GitLab**, and **GitHub**
-- Never use GitHub-only syntax (`> [!NOTE]`, emoji shortcodes) — use universal alternatives
-- Mermaid requires `bierner.markdown-mermaid` VSCode extension (auto-installed, documented in onboarding)
+- Never use GitHub-only syntax (`> [!NOTE]`, emoji shortcodes) -- use universal alternatives.
+- All formatting must render in VSCode Markdown Preview, GitLab, and GitHub.
+- Mermaid requires `bierner.markdown-mermaid` VSCode extension.
 
 ## Plan Persistence After Thinking (MANDATORY)
 
-Every plan, analysis, or strategic decision produced during a session MUST be persisted before execution begins. Plans that exist only in conversation context are considered incomplete.
+Before starting implementation: verify that the plan is persisted to a file. Plans existing only in conversation context are invalid.
 
 ### Persistence Rules
 
-1. **Plan Mode output** — Save to `docs/PLAN.md` before exiting plan mode. Format: problem statement, options considered, decision + rationale, numbered execution steps.
-2. **ThinkDeep / PAL analysis** — If PAL tools produce strategic findings, summarize key conclusions in the relevant doc file (`docs/PLAN.md`, `docs/REVIEW.md`, or `docs/AUDIT.md`).
-3. **Architecture decisions** — Save as ADR in `docs/adr/NNNN-<title>.md`. Template: Context, Decision, Consequences, Status (proposed/accepted/deprecated).
-4. **Spike/Research results** — Save to `docs/spikes/YYYY-MM-DD-<topic>.md`. Must include: question, options explored, recommendation, evidence.
-5. **Postmortems** — Save to `docs/postmortems/YYYY-MM-DD-<title>.md`. Must include: timeline, root cause, impact, action items.
+| Trigger | Save to | Format |
+|---------|---------|--------|
+| After producing a plan in plan mode | `docs/PLAN.md` | Problem statement, options, decision + rationale, numbered steps |
+| After PAL tools produce strategic findings | `docs/PLAN.md`, `docs/REVIEW.md`, or `docs/AUDIT.md` | Key conclusions summary |
+| After making an architecture decision | `docs/adr/NNNN-<title>.md` | Context, Decision, Consequences, Status |
+| After completing a spike/research | `docs/spikes/YYYY-MM-DD-<topic>.md` | Question, options, recommendation, evidence |
+| After a postmortem | `docs/postmortems/YYYY-MM-DD-<title>.md` | Timeline, root cause, impact, action items |
 
 ### Clean Context Gate
 
-Before starting implementation:
-- Plan saved to `docs/` with clear execution steps
-- Each step has a checkpoint (what to verify)
-- Steps are numbered and atomic (resumable from any point)
-- No plan details exist ONLY in conversation — all persisted to files
+Before starting implementation, verify all four:
+- [ ] Plan saved to `docs/` with clear execution steps.
+- [ ] Each step has a checkpoint (what to verify).
+- [ ] Steps are numbered and atomic (resumable from any point).
+- [ ] No plan details exist ONLY in conversation -- all persisted to files.
 
 ### Artifact Index
 
-Maintain `docs/INDEX.md` as a table of contents for all decision artifacts (ADRs, spikes, postmortems, plans). Update after each new artifact is created.
+After creating any decision artifact (ADR, spike, postmortem, plan): update `docs/INDEX.md` with a link to the new artifact.
 
 ## Session Start Protocol
 
-At the start of each session:
-1. Read `docs/PLAN.md` — check for in-progress plans
-2. Read `docs/ROADMAP.md` — check current phase status
-3. Call `list_active_pipelines()` — check for interrupted pipelines that need resume
-4. If active pipelines found: report them to user with resume instructions before accepting new tasks
-5. Report any other pending work to user before accepting new tasks
+At the start of each session, execute these steps in order:
+1. Read `docs/PLAN.md` -- check for in-progress plans.
+2. Read `docs/ROADMAP.md` -- check current phase status.
+3. Call `list_active_pipelines()` -- check for interrupted pipelines.
+4. When active pipelines exist: report them to the user with resume instructions before accepting new tasks.
+5. When other pending work exists: report it before accepting new tasks.
 
 ## Context & Token Optimization (MANDATORY)
 
-Minimize token waste and keep the context window clean across phases, sessions, and task switches.
+### Before Switching Tasks or Phases
 
-### Between Phases / Task Switches
+- Before moving to a different feature, phase, or task domain: commit all current work and update `docs/`. Never carry stale context.
+- When research or exploration exceeds 3 file reads: delegate to a Task agent. Never run heavy scanning in the main context.
+- When a subagent returns results: extract only relevant findings. Never paste full tool outputs verbatim.
 
-- **Commit and document before switching** — Before moving to a different feature, phase, or task domain, ensure all current work is committed and documented in `docs/`. Do not carry stale context from one task into the next.
-- **Delegate to subagents for heavy research** — Use Task tool agents (Explore, Plan, general-purpose) for codebase exploration, documentation lookup, and multi-file analysis. This offloads token-heavy searches from the main context window.
-- **Summarize, don't echo** — When a subagent returns results, extract only the relevant findings for the main context. Do not paste full tool outputs verbatim unless the user needs them.
-- **Prefer targeted reads over broad scans** — Use Grep/Glob with specific patterns before resorting to reading entire files. Read only the lines you need (use `offset`/`limit` for large files).
-- **Never use `**/*.md` (or any `**/*` glob) on project roots** — Recursive globs hang on directories that contain large subdirs like `chroma_db/`, `node_modules/`, `.venv/`, `__pycache__/`. This blocks the main context and forces the user to interrupt. Use targeted patterns instead:
-  - ❌ `Glob("**/*.md", path="~/project")` — hangs
-  - ✅ `Glob("*.md", path="~/project")` — root only
-  - ✅ `Glob("docs/*.md", path="~/project")` — specific subdir
-  - ✅ `Bash("find ~/project -maxdepth 2 -name '*.md' -not -path '*/node_modules/*' -not -path '*/.venv/*'")` — safe find with limits
-  - ✅ Delegate to a Task agent — it handles scanning internally without blocking the main context
+### During a Session
 
-### Within a Session
+- Before reading a file: check if it was already read in this conversation and not modified since. Never re-read unchanged files.
+- When multiple independent tool calls are needed: batch them in one message.
+- When responding: use minimum words needed. No filler phrases, no restating the question.
+- When tracking multi-step progress: use TodoWrite. Never write status paragraphs in chat.
+- When using Glob: NEVER use `**/*.md` or any `**/*` pattern on project roots. Use targeted patterns:
+  - `Glob("*.md", path="~/project")` -- root only
+  - `Glob("docs/*.md", path="~/project")` -- specific subdir
+  - `Bash("find ~/project -maxdepth 2 -name '*.md' -not -path '*/node_modules/*' -not -path '*/.venv/*'")` -- safe find
+  - Delegate to a Task agent -- handles scanning internally
 
-- **Avoid redundant reads** — Do not re-read files that were already read in the current conversation unless the file was modified since the last read.
-- **Batch independent tool calls** — Always make independent tool calls in parallel (single message, multiple tool uses). Sequential calls where parallel is possible wastes round-trips and tokens.
-- **Keep responses concise** — Answer in the minimum words needed. No filler phrases, no restating the question, no verbose explanations unless the user asks.
-- **Use TodoWrite for tracking, not prose** — Track multi-step progress with the todo list, not by writing status paragraphs in chat.
+### Before a Session Ends (Context Reset)
 
-### Between Sessions (Context Reset)
-
-- **Persist all state to files** — Before a session ends or context compresses, ensure: current progress in `docs/PLAN.md` or `docs/ROADMAP.md`, pipeline state via `complete_step`, key findings in relevant `docs/` files.
-- **MEMORY.md is the bridge** — Update auto-memory with current project state (phase, test counts, key decisions) so the next session starts informed.
-- **Plan files must be resumable** — Any developer or agent reading `docs/PLAN.md` should be able to continue from the last checkpoint without re-analyzing the codebase.
-- **Clean start protocol** — New sessions follow the Session Start Protocol (above) to reload state from files, not from conversation history.
+- Before context compresses or session ends: persist all state to files (`docs/PLAN.md`, `docs/ROADMAP.md`, pipeline state via `complete_step`, MEMORY.md).
+- Plan files must be resumable: any developer or agent reading `docs/PLAN.md` must be able to continue from the last checkpoint.
 
 ## Cost-Aware Development (MANDATORY)
 
-High token usage risks losing access to Claude. Prefer zero-cost tools over LLM calls whenever possible.
-
 ### Scripts Over Agents
 
-Use simple CLI tools instead of LLM agents for these tasks:
+When performing these tasks, use CLI tools, not LLM agents:
 
 | Task | Use Script | NOT Agent |
 |------|-----------|-----------|
@@ -568,130 +505,101 @@ Use simple CLI tools instead of LLM agents for these tasks:
 | Git diff stats | `git diff --stat` | code-reviewer |
 | Test runner | `pytest -q` | test-engineer |
 
-### When to Skip CV Gates
+### CV Gate Applicability
 
-- **Docs-only changes** — documentation updates do not need cross-validation
-- **Config/formatting changes** — `.gitignore`, `pyproject.toml`, linter config
-- **Single-file trivial fixes** — typos, log messages, comments
-- **Tech debt cleanup** — dead code removal, import sorting, lint fixes
+**Skip CV gates for:** docs-only changes, config/formatting changes, single-file trivial fixes, tech debt cleanup (dead code, import sorting, lint fixes).
 
-### When CV Gates ARE Needed
-
-- Architecture decisions (new components, API design, data models)
-- Security-sensitive changes (auth, crypto, input validation)
-- Multi-file refactoring that changes behavior
-- Production deployments and migrations
+**Require CV gates for:** architecture decisions, security-sensitive changes, multi-file refactoring that changes behavior, production deployments and migrations.
 
 ### Cost Monitoring
 
-- Use the `cost_report` MCP tool for in-session analytics with optimization hints
-- If daily cost exceeds $1.00 — review the report and reduce CV gate usage
+- When daily cost exceeds $1.00: review the cost report and reduce CV gate usage.
+- Use `cost_report` MCP tool for in-session analytics with optimization hints.
 
 ### Zero-Token CLI Tools (config repo only)
 
-These scripts live in `claude-team-control/scripts/` and run without any LLM tokens:
+These scripts live in `claude-team-control/scripts/` and run without LLM tokens:
 
 **Cost analytics** (`scripts/cost-report.py`):
-- `python scripts/cost-report.py` — full cost report to stdout
-- `python scripts/cost-report.py --days 7` — last 7 days only
-- `python scripts/cost-report.py --save` — persist to `docs/COST-REPORT.md`
-- `python scripts/cost-report.py --json` / `--csv` — machine-readable output
-- `python scripts/cost-report.py --budget 1.00` — warn if any day exceeds $1.00 (exit code 1)
-- `python scripts/cost-report.py --budget-total 5.00` — warn if total exceeds $5.00
+- `python scripts/cost-report.py` -- full cost report
+- `python scripts/cost-report.py --days 7` -- last 7 days
+- `python scripts/cost-report.py --save` -- persist to `docs/COST-REPORT.md`
+- `python scripts/cost-report.py --json` / `--csv` -- machine-readable
+- `python scripts/cost-report.py --budget 1.00` -- warn if daily >$1.00 (exit code 1)
+- `python scripts/cost-report.py --budget-total 5.00` -- warn if total >$5.00
 
 **Pipeline statistics** (`scripts/pipeline-stats.py`):
-- `python scripts/pipeline-stats.py` — completion rates, avg time, failure points
-- `python scripts/pipeline-stats.py --type feature` — filter by pipeline type
-- `python scripts/pipeline-stats.py --active` — only active/halted pipelines
-- `python scripts/pipeline-stats.py --json` — JSON output
+- `python scripts/pipeline-stats.py` -- completion rates, avg time, failure points
+- `python scripts/pipeline-stats.py --type feature` -- filter by pipeline type
+- `python scripts/pipeline-stats.py --active` -- active/halted pipelines only
+- `python scripts/pipeline-stats.py --json` -- JSON output
 
 **Sync validation** (`scripts/sync-validate.py`):
-- `python scripts/sync-validate.py` — check all 5 projects + global for desync
-- `python scripts/sync-validate.py --project pdap-hub` — check single project
-- `python scripts/sync-validate.py --fix` — show fix commands
-- Exit code 1 if any project is desynced
+- `python scripts/sync-validate.py` -- check all 5 projects + global
+- `python scripts/sync-validate.py --project pdap-hub` -- single project
+- `python scripts/sync-validate.py --fix` -- show fix commands
+- Exit code 1 if any project desynced
 
 **Orchestrator management** (`scripts/orchestrate-cli.py`):
-- `python scripts/orchestrate-cli.py health` — check config, venv, costs, API key
-- `python scripts/orchestrate-cli.py pipelines` — list all pipelines (active/completed)
-- `python scripts/orchestrate-cli.py version` — show orchestrator version
+- `python scripts/orchestrate-cli.py health` -- check config, venv, costs, API key
+- `python scripts/orchestrate-cli.py pipelines` -- list all pipelines
+- `python scripts/orchestrate-cli.py version` -- show orchestrator version
 - Import-based commands (require `cd orchestrator && uv run`):
-  - `uv run python ../scripts/orchestrate-cli.py agents [--tier strategic]` — list agents
-  - `uv run python ../scripts/orchestrate-cli.py info <agent>` — agent details
-  - `uv run python ../scripts/orchestrate-cli.py route "<task>"` — route task locally
+  - `uv run python ../scripts/orchestrate-cli.py agents [--tier strategic]` -- list agents
+  - `uv run python ../scripts/orchestrate-cli.py info <agent>` -- agent details
+  - `uv run python ../scripts/orchestrate-cli.py route "<task>"` -- route task locally
 
-Note: These scripts are NOT deployed to target projects. They are config-repo utilities only.
+Note: These scripts are NOT deployed to target projects. Config-repo utilities only.
 
 ## Testing & Mock Data (CRITICAL)
 
-- **Mock fixtures must match real formats** — NEVER fabricate or guess response formats for fixture/mock files. Before creating or updating a fixture, query the real external service to capture the actual response format.
-- **If real format is broken** — file a bug against the upstream service. Do not invent a workaround format for the fixture.
-- **Tests must verify real patterns** — Unit tests must include test cases using the real response format (not just mock format). A test that passes against fake data but fails on real data is worse than no test at all.
-- **Test what matters** — Tests that only verify fabricated formats provide zero value.
+- Before creating or updating a fixture/mock file: query the real external service to capture the actual response format. Never fabricate or guess formats.
+- When the real format is broken: file a bug against the upstream service. Never invent a workaround format.
+- When writing unit tests: include test cases using the real response format, not just mock format.
+- When reviewing tests: reject tests that only verify fabricated formats.
 
 ## Agent Memory (ALL AGENTS)
 
-Agents have persistent memory via MEMORY.md in their agent-memory directory. This memory survives across sessions and must be maintained.
+### After These Events, Update MEMORY.md:
+
+- After completing a significant task (new feature, bug fix, sprint).
+- After discovering a new gotcha or pattern.
+- Before session ends (before context is lost).
+- After receiving a correction from the user.
 
 ### What to Save
 
-- **Project patterns** — coding conventions, mock structures, patching patterns specific to this project
-- **Key file locations** — important files, their purpose, line ranges of interest
-- **Gotchas discovered** — pitfalls, workarounds, framework quirks found during work
-- **Sprint/phase state** — current progress, test counts, what was done and what remains
-- **Decisions made** — technical choices and their rationale (so the next session doesn't re-debate)
+- **Project patterns** -- coding conventions, mock structures, patching patterns.
+- **Key file locations** -- important files, their purpose, line ranges of interest.
+- **Gotchas discovered** -- pitfalls, workarounds, framework quirks.
+- **Sprint/phase state** -- current progress, test counts, remaining work.
+- **Decisions made** -- technical choices and rationale.
 
 ### What NOT to Save
 
-- Session-specific context (current task details, in-progress debugging)
-- Information that duplicates project docs (README, ROADMAP, etc.)
-- Unverified assumptions — only save confirmed patterns
-- Large code snippets — reference file paths and line numbers instead
-
-### When to Update
-
-- After completing a significant task (new feature, bug fix, sprint)
-- When discovering a new gotcha or pattern
-- At session end, before context is lost
-- After receiving correction from the user
-
-### Memory Format
-
-```markdown
-# <Agent Name> Memory — <Project Name>
-
-## Project State
-- Current phase/sprint and progress
-
-## Key Patterns
-- Coding conventions, frameworks, important abstractions
-
-## Gotchas
-- Known pitfalls and their workarounds
-
-## Files Modified
-- Recent significant changes with context
-```
+- Session-specific context (current task details, in-progress debugging).
+- Information that duplicates project docs (README, ROADMAP).
+- Unverified assumptions -- only save confirmed patterns.
+- Large code snippets -- reference file paths and line numbers instead.
 
 ## Collaboration Protocol (ALL AGENTS)
 
-If for quality execution of a task you need help from another specialist:
-1. Do NOT try to do work that another agent is better suited for
-2. Complete your current work phase
-3. Return results with a recommendation: which agent is needed, what context to pass, what to do with the result
-4. Format:
+When a task requires expertise from another specialist:
+1. Do NOT attempt work another agent is better suited for.
+2. Complete the current work phase.
+3. Return results with a handoff recommendation:
+
    **NEEDS ASSISTANCE:**
    - **Agent**: [agent name, e.g. security-auditor]
    - **Why**: [why this specialist is needed]
-   - **Context**: [what to pass — files, lines, findings]
+   - **Context**: [what to pass -- files, lines, findings]
    - **After**: [continue my work / hand to human / chain to third agent]
 
 ## Mindset
 
-- **Think broadly** - Consider multiple approaches and their trade-offs
-- **Be practical, not formal** - Focus on what works, not on ceremony
-- **Don't overcomplicate** - Simple, working solutions beat complex, "perfect" ones
-- **Be proactive** - Suggest improvements when you see opportunities, but don't force them
+- When faced with multiple approaches: consider trade-offs before choosing. Prefer the simplest working solution.
+- When process conflicts with pragmatism: focus on what works, not ceremony.
+- When spotting improvement opportunities: suggest them proactively, but do not force them.
 
 
 <!-- === Project-specific overlay: vibing-steampunk.md === -->

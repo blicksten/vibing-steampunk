@@ -409,6 +409,66 @@ When launching agents, you MUST:
 3. If mcpServers is empty AND task doesn't need MCP — background is OK
 4. For parallel launches: MCP-dependent agents run foreground sequentially, non-MCP agents can run background in parallel
 5. NEVER launch an MCP-dependent agent in background — this causes silent failure
+6. For pipeline steps: always inject `pipeline_id`, step number, and STEP RESULT requirement into Task agent prompt (see Task Agent Launch Protocol below)
+
+## Task Agent Launch Protocol (MANDATORY)
+
+> **⚠️ Critical:** Hooks (`complete-step-gate.sh`, `pre-commit-gate.sh`, etc.) run ONLY in the main session. Task sub-agents bypass all hooks. Enforce quality and pipeline discipline through prompt injection, not hooks.
+
+### Authority Tool Rule
+
+**Only the main session may call:**
+- `mcp__orchestrator__complete_step(pipeline_id, step_output)` — after validating STEP RESULT
+- `mcp__orchestrator__start_pipeline(pipeline_type, description)` — after route_task + plan saved
+
+**Sub-agents MUST NOT call these tools directly.** Sub-agents produce STEP RESULT blocks; the main session validates and calls the authority tools. This ensures quality hooks fire correctly.
+
+### Pipeline Context Injection
+
+Every Task agent launched for a pipeline step MUST receive this in its prompt:
+
+```
+PIPELINE CONTEXT (do not ignore):
+  pipeline_id: {id from start_pipeline result}
+  step: {n} of {total} — {step_name}
+  pipeline_type: {type}
+
+REQUIRED: Produce a ## STEP RESULT block as the very last thing in your response.
+DO NOT call mcp__orchestrator__complete_step — the main session does this after reviewing your output.
+```
+
+### STEP RESULT Format
+
+Every pipeline agent MUST end its response with this block:
+
+```
+## STEP RESULT
+- step: {step-name}
+- pipeline_id: {pipeline-id}
+- status: COMPLETE | INCOMPLETE | FAILED | SKIPPED | NEEDS_ASSISTANCE
+- artifacts: [list of files created or modified]
+- notes: <1-3 lines summary>
+- next: {next-agent-name or PIPELINE_COMPLETE}
+```
+
+**Status values:**
+- `COMPLETE` — step fully done, all artifacts written, ready for main session to call complete_step
+- `INCOMPLETE` — work partially done, main session should address the gap before continuing
+- `FAILED` — unrecoverable error, escalate to user
+- `SKIPPED` — step not applicable to this pipeline run (optional steps: frontend-dev, visual-qa)
+- `NEEDS_ASSISTANCE` — agent encountered a blocker requiring a different specialist
+
+**Note on artifacts:** List file paths only, do not duplicate content. Artifacts (docs/PLAN.md, docs/REVIEW.md, etc.) are the source of truth for durable context. STEP RESULT is ephemeral routing metadata — it indexes artifacts, not replaces them.
+
+### Main Session Validation Rules
+
+After receiving a Task agent response:
+
+1. **Check for STEP RESULT block** — if absent, ask the agent to resubmit with the required format
+2. **Check status** — do NOT advance if status is INCOMPLETE, FAILED, or NEEDS_ASSISTANCE
+3. **Verify artifacts** — confirm listed artifact files exist before calling complete_step
+4. **Call complete_step yourself** — `mcp__orchestrator__complete_step(pipeline_id, step_output)` after validation
+5. **If complete_step returns HALT** — fix the issue (run PAL/audit if needed), then resubmit the step
 
 ## Agent Chaining Rules
 
