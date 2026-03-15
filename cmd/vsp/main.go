@@ -99,6 +99,9 @@ func init() {
 	// Debugger configuration
 	rootCmd.Flags().StringVar(&cfg.TerminalID, "terminal-id", "", "SAP GUI terminal ID for cross-tool breakpoint sharing")
 
+	// HTTP mode options (MCP over SSE instead of STDIO)
+	rootCmd.Flags().IntVar(&cfg.HTTPPort, "http-port", 0, "Serve MCP over SSE on this port instead of STDIO (e.g. 8083). Use SAP_HTTP_PORT env var.")
+
 	// Output options
 	rootCmd.Flags().BoolVarP(&cfg.Verbose, "verbose", "v", false, "Enable verbose output to stderr")
 
@@ -124,6 +127,8 @@ func init() {
 	viper.BindPFlag("mode", rootCmd.Flags().Lookup("mode"))
 	viper.BindPFlag("disabled-groups", rootCmd.Flags().Lookup("disabled-groups"))
 	viper.BindPFlag("verbose", rootCmd.Flags().Lookup("verbose"))
+	viper.BindPFlag("http-port", rootCmd.Flags().Lookup("http-port"))
+	viper.SetDefault("http-port", 0)
 
 	// Feature configuration
 	viper.BindPFlag("feature-hana", rootCmd.Flags().Lookup("feature-hana"))
@@ -223,8 +228,11 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create and start MCP server
-	server := mcp.NewServer(cfg)
-	return server.ServeStdio()
+	s := mcp.NewServer(cfg)
+	if cfg.HTTPPort > 0 {
+		return s.ServeHTTP("127.0.0.1", cfg.HTTPPort)
+	}
+	return s.ServeStdio()
 }
 
 func resolveConfig(cmd *cobra.Command) {
@@ -377,6 +385,13 @@ func resolveConfig(cmd *cobra.Command) {
 	if !cmd.Flags().Changed("terminal-id") {
 		if v := viper.GetString("TERMINAL_ID"); v != "" {
 			cfg.TerminalID = v
+		}
+	}
+
+	// HTTP port: flag > SAP_HTTP_PORT env
+	if !cmd.Flags().Changed("http-port") {
+		if v := viper.GetInt("HTTP_PORT"); v != 0 {
+			cfg.HTTPPort = v
 		}
 	}
 }

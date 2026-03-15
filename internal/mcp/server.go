@@ -4,6 +4,8 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -89,6 +91,9 @@ type Config struct {
 
 	// HTTP timeout for SAP requests (default: 60s)
 	Timeout time.Duration
+
+	// HTTPPort when > 0, serve MCP over SSE on this port instead of STDIO.
+	HTTPPort int
 
 	// Granular tool visibility (from .vsp.json)
 	// Key: tool name, Value: true=enabled, false=disabled
@@ -205,6 +210,24 @@ func parseFeatureMode(s string) adt.FeatureMode {
 // ServeStdio starts the MCP server on stdin/stdout.
 func (s *Server) ServeStdio() error {
 	return server.ServeStdio(s.mcpServer)
+}
+
+// ServeHTTP starts the MCP server over SSE on the given host and port.
+// The SSE endpoint is available at http://<host>:<port>/sse.
+// A /health endpoint is also exposed for liveness checks.
+func (s *Server) ServeHTTP(host string, port int) error {
+	sseServer := server.NewSSEServer(s.mcpServer,
+		server.WithBaseURL(fmt.Sprintf("http://%s:%d", host, port)),
+	)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"status":"ok"}`)
+	})
+	mux.Handle("/", sseServer)
+	addr := fmt.Sprintf("%s:%d", host, port)
+	log.Printf("MCP SSE server listening on http://%s/sse", addr)
+	return http.ListenAndServe(addr, mux)
 }
 
 // registerTools registers ADT tools with the MCP server based on mode, disabled groups, and granular config.
