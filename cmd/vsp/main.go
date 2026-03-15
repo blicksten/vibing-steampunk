@@ -30,7 +30,7 @@ var rootCmd = &cobra.Command{
 	Long: `vsp is a Model Context Protocol (MCP) server that provides
 ABAP Development Tools (ADT) functionality for AI assistants like Claude.
 
-It exposes 19 essential tools (focused mode, default) or 45 complete tools (expert mode) for reading, writing, and managing ABAP code in SAP systems.
+It exposes 104 essential tools (focused mode, default) or 144 complete tools (expert mode) for reading, writing, and managing ABAP code in SAP systems.
 
 Examples:
   # Using environment variables
@@ -84,7 +84,7 @@ func init() {
 	rootCmd.Flags().BoolVar(&cfg.AllowTransportableEdits, "allow-transportable-edits", false, "Allow editing objects in transportable packages (requires transport parameter)")
 
 	// Mode options
-	rootCmd.Flags().StringVar(&cfg.Mode, "mode", "focused", "Tool mode: focused (19 essential tools) or expert (all 45 tools)")
+	rootCmd.Flags().StringVar(&cfg.Mode, "mode", "focused", "Tool mode: focused (104 essential tools) or expert (all 144 tools)")
 	rootCmd.Flags().StringVar(&cfg.DisabledGroups, "disabled-groups", "", "Disable tool groups: 5/U=UI5, T=Tests, H=HANA, D=Debug (e.g., \"TH\" disables Tests and HANA)")
 
 	// Feature configuration (safety network)
