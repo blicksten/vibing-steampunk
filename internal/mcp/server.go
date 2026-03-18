@@ -281,7 +281,7 @@ func (s *Server) registerTools(mode string, disabledGroups string, toolsConfig m
 		}
 	}
 
-	// Define focused mode tool whitelist (41 essential tools)
+	// Define focused mode tool whitelist (81 essential tools)
 	focusedTools := map[string]bool{
 		// Unified tools (2)
 		"GetSource":   true,
@@ -1041,6 +1041,7 @@ func (s *Server) registerTools(mode string, disabledGroups string, toolsConfig m
 			mcp.WithDescription("Get variable values during a debug session. Use '@ROOT' to get top-level variables, or specific variable IDs to get their values."),
 			mcp.WithArray("variable_ids",
 				mcp.Description("Variable IDs to retrieve (e.g., ['@ROOT'] for top-level, or specific IDs like ['LV_COUNT', 'LS_DATA'])"),
+				mcp.Items(map[string]interface{}{"type": "string"}),
 			),
 		), s.handleDebuggerGetVariables)
 	}

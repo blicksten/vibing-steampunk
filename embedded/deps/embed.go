@@ -51,12 +51,13 @@ func GetAvailableDependencies() []DependencyInfo {
 	}
 }
 
-// GetDependencyZIP returns the ZIP data for a dependency.
+// GetDependencyZIP returns embedded ZIP bytes for a named dependency.
+// Returns nil when the dependency is unknown or not embedded in this build.
 func GetDependencyZIP(name string) []byte {
-	switch name {
+	switch strings.ToLower(strings.TrimSpace(name)) {
 	case "abapgit-standalone":
 		return AbapGitStandalone
-	case "abapgit-full":
+	case "abapgit-full", "abapgit-dev":
 		return AbapGitFull
 	default:
 		return nil
