@@ -1842,32 +1842,36 @@ CLASS zcl_qjs_c13 IMPLEMENTATION.
       s2 = l1.
       s3 = 8.
       s2 = s2 + s3.
-      " IMPORT: wasi_snapshot_preview1.clock_time_get (TODO)
-      s2 = p0.
-      s3 = l1.
-      s3 = zcl_wasm_rt=>mem_ld_i64( iv_mem = mv_mem iv_addr = s3 + 8 ).
-      l2 = s3.
-      s4 = 1000000000.
-      s3 = zcl_wasm_rt=>div_u64( iv_a = s3 iv_b = s4 ).
-      l3 = s3.
-      zcl_wasm_rt=>mem_st_i64( EXPORTING iv_val = s3 iv_addr = s2 + 0 CHANGING cv_mem = mv_mem ).
-      s2 = p0.
-      s3 = l2.
-      s4 = l3.
-      s5 = 1000000000.
-      s4 = s4 * s5.
-      s3 = s3 - s4.
-      s3 = zcl_wasm_rt=>wrap_i64( s3 ).
-      s4 = 1000.
-      s3 = zcl_wasm_rt=>div_u32( iv_a = s3 iv_b = s4 ).
-      s3 = zcl_wasm_rt=>extend_u32( s3 ).
-      zcl_wasm_rt=>mem_st_i64( EXPORTING iv_val = s3 iv_addr = s2 + 8 CHANGING cv_mem = mv_mem ).
+      " WASI clock_time_get: return current time in nanoseconds
+      GET TIME STAMP FIELD DATA(lv_wasi_ts).
+      DATA(lv_wasi_ns) = CONV int8( lv_wasi_ts * 1000000000 ).
+      zcl_wasm_rt=>mem_st_i64( EXPORTING iv_val = lv_wasi_ns iv_addr = s2 CHANGING cv_mem = mv_mem ).
+      s0 = 0.
+      s0 = p0.
+      s1 = l1.
+      s1 = zcl_wasm_rt=>mem_ld_i64( iv_mem = mv_mem iv_addr = s1 + 8 ).
+      l2 = s1.
+      s2 = 1000000000.
+      s1 = zcl_wasm_rt=>div_u64( iv_a = s1 iv_b = s2 ).
+      l3 = s1.
+      zcl_wasm_rt=>mem_st_i64( EXPORTING iv_val = s1 iv_addr = s0 + 0 CHANGING cv_mem = mv_mem ).
+      s0 = p0.
+      s1 = l2.
+      s2 = l3.
+      s3 = 1000000000.
+      s2 = s2 * s3.
+      s1 = s1 - s2.
+      s1 = zcl_wasm_rt=>wrap_i64( s1 ).
+      s2 = 1000.
+      s1 = zcl_wasm_rt=>div_u32( iv_a = s1 iv_b = s2 ).
+      s1 = zcl_wasm_rt=>extend_u32( s1 ).
+      zcl_wasm_rt=>mem_st_i64( EXPORTING iv_val = s1 iv_addr = s0 + 8 CHANGING cv_mem = mv_mem ).
     ELSE.
     ENDIF.
-    s2 = l1.
-    s3 = 16.
-    s2 = s2 + s3.
-    mv_g0 = s2.
+    s0 = l1.
+    s1 = 16.
+    s0 = s0 + s1.
+    mv_g0 = s0.
   ENDMETHOD.
   METHOD f1069.
     DATA l2 TYPE i.
@@ -2457,27 +2461,45 @@ CLASS zcl_qjs_c13 IMPLEMENTATION.
       s3 = l3.
       s4 = 12.
       s3 = s3 + s4.
-      " IMPORT: wasi_snapshot_preview1.fd_write (TODO)
-      s4 = 65535.
-      s3 = zcl_wasm_rt=>and32( iv_a = s3 iv_b = s4 ).
-      p0 = s3.
-      IF s3 <> 0.
-        s3 = 1215576.
-        s4 = p0.
-        mem_st_i32( iv_addr = s3 iv_val = s4 ).
+      " WASI fd_write: fd=s0 iovs=s1 iovs_len=s2 nwritten=s3
+      DATA lv_wasi_written TYPE i.
+      DATA lv_wasi_iov_ptr TYPE i.
+      DATA lv_wasi_iov_len TYPE i.
+      DATA lv_wasi_str_ptr TYPE i.
+      DATA lv_wasi_str_len TYPE i.
+      lv_wasi_written = 0.
+      DO s2 TIMES.
+        lv_wasi_iov_ptr = s1 + ( sy-index - 1 ) * 8.
+        PERFORM mem_ld_i32 USING lv_wasi_iov_ptr CHANGING lv_wasi_str_ptr.
+        PERFORM mem_ld_i32 USING lv_wasi_iov_ptr + 4 CHANGING lv_wasi_str_len.
+        IF lv_wasi_str_len > 0.
+          DATA(lv_wasi_bytes) = mv_mem+lv_wasi_str_ptr(lv_wasi_str_len).
+          " Output bytes (could be WRITE or collect in buffer)
+        ENDIF.
+        lv_wasi_written = lv_wasi_written + lv_wasi_str_len.
+      ENDDO.
+      PERFORM mem_st_i32 USING s3 lv_wasi_written.
+      s0 = 0. " errno = success
+      s1 = 65535.
+      s0 = zcl_wasm_rt=>and32( iv_a = s0 iv_b = s1 ).
+      p0 = s0.
+      IF s0 <> 0.
+        s0 = 1215576.
+        s1 = p0.
+        mem_st_i32( iv_addr = s0 iv_val = s1 ).
         lv_br = 1. EXIT. " br 1
       ELSE.
       ENDIF.
-      s3 = l3.
-      s3 = mem_ld_i32( s3 + 12 ).
-      l4 = s3.
+      s0 = l3.
+      s0 = mem_ld_i32( s0 + 12 ).
+      l4 = s0.
     ENDDO.
-    s3 = l3.
-    s4 = 16.
-    s3 = s3 + s4.
-    mv_g0 = s3.
-    s3 = l4.
-    rv = s3.
+    s0 = l3.
+    s1 = 16.
+    s0 = s0 + s1.
+    mv_g0 = s0.
+    s0 = l4.
+    rv = s0.
   ENDMETHOD.
   METHOD f1079.
     DATA l3 TYPE i.
@@ -3072,31 +3094,31 @@ CLASS zcl_qjs_c13 IMPLEMENTATION.
       s3 = p0.
       s4 = 8.
       s3 = s3 + s4.
-      " IMPORT: wasi_snapshot_preview1.fd_seek (TODO)
-      s4 = 65535.
-      s3 = zcl_wasm_rt=>and32( iv_a = s3 iv_b = s4 ).
-      p2 = s3.
-      IF s3 <> 0.
-        s3 = 1215576.
-        s4 = 70.
-        s5 = p2.
-        s6 = p2.
-        s7 = 76.
-        IF s6 = s7. s6 = 1. ELSE. s6 = 0. ENDIF.
-        IF s6 <> 0. s4 = s4. ELSE. s4 = s5. ENDIF.
-        mem_st_i32( iv_addr = s3 iv_val = s4 ).
-        s3 = -1.
+      s0 = 8. " WASI fd_seek: EBADF
+      s1 = 65535.
+      s0 = zcl_wasm_rt=>and32( iv_a = s0 iv_b = s1 ).
+      p2 = s0.
+      IF s0 <> 0.
+        s0 = 1215576.
+        s1 = 70.
+        s2 = p2.
+        s3 = p2.
+        s4 = 76.
+        IF s3 = s4. s3 = 1. ELSE. s3 = 0. ENDIF.
+        IF s3 <> 0. s1 = s1. ELSE. s1 = s2. ENDIF.
+        mem_st_i32( iv_addr = s0 iv_val = s1 ).
+        s0 = -1.
         lv_br = 1. EXIT. " br 1
       ELSE.
       ENDIF.
-      s4 = p0.
-      s4 = zcl_wasm_rt=>mem_ld_i64( iv_mem = mv_mem iv_addr = s4 + 8 ).
+      s1 = p0.
+      s1 = zcl_wasm_rt=>mem_ld_i64( iv_mem = mv_mem iv_addr = s1 + 8 ).
     ENDDO.
-    s5 = p0.
-    s6 = 16.
-    s5 = s5 + s6.
-    mv_g0 = s5.
-    rv = s4.
+    s2 = p0.
+    s3 = 16.
+    s2 = s2 + s3.
+    mv_g0 = s2.
+    rv = s1.
   ENDMETHOD.
   METHOD f1090.
     DATA l3 TYPE i.

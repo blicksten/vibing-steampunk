@@ -7463,45 +7463,47 @@ CLASS zcl_qjs_c11 IMPLEMENTATION.
           s1 = l4.
           s2 = 8.
           s1 = s1 + s2.
-          " IMPORT: wasi_snapshot_preview1.fd_fdstat_get (TODO)
-          s2 = 65535.
-          s1 = zcl_wasm_rt=>and32( iv_a = s1 iv_b = s2 ).
-          l3 = s1.
-          IF s1 <> 0. EXIT. ENDIF. " br_if 0
-          s1 = 59.
-          l3 = s1.
-          s1 = l4.
-          s1 = mem_ld_i32_8u( s1 + 8 ).
-          s2 = 2.
-          IF s1 <> s2. s1 = 1. ELSE. s1 = 0. ENDIF.
-          IF s1 <> 0. EXIT. ENDIF. " br_if 0
-          s1 = l4.
-          s1 = mem_ld_i32_8u( s1 + 16 ).
-          s2 = 36.
-          s1 = zcl_wasm_rt=>and32( iv_a = s1 iv_b = s2 ).
-          IF s1 <> 0. EXIT. ENDIF. " br_if 0
-          s1 = 1.
+          " WASI fd_fdstat_get: return filetype=regular
+          PERFORM mem_st_i32_8 USING s1 4.
+          s0 = 0.
+          s1 = 65535.
+          s0 = zcl_wasm_rt=>and32( iv_a = s0 iv_b = s1 ).
+          l3 = s0.
+          IF s0 <> 0. EXIT. ENDIF. " br_if 0
+          s0 = 59.
+          l3 = s0.
+          s0 = l4.
+          s0 = mem_ld_i32_8u( s0 + 8 ).
+          s1 = 2.
+          IF s0 <> s1. s0 = 1. ELSE. s0 = 0. ENDIF.
+          IF s0 <> 0. EXIT. ENDIF. " br_if 0
+          s0 = l4.
+          s0 = mem_ld_i32_8u( s0 + 16 ).
+          s1 = 36.
+          s0 = zcl_wasm_rt=>and32( iv_a = s0 iv_b = s1 ).
+          IF s0 <> 0. EXIT. ENDIF. " br_if 0
+          s0 = 1.
           lv_br = 1. EXIT. " br 1
         ENDDO.
-        s2 = 1215576.
-        s3 = l3.
-        mem_st_i32( iv_addr = s2 iv_val = s3 ).
-        s2 = 0.
+        s1 = 1215576.
+        s2 = l3.
+        mem_st_i32( iv_addr = s1 iv_val = s2 ).
+        s1 = 0.
       ENDDO.
-      s3 = l4.
-      s4 = 32.
-      s3 = s3 + s4.
-      mv_g0 = s3.
-      IF s2 <> 0. EXIT. ENDIF. " br_if 0
-      s2 = p0.
-      s3 = -1.
-      mem_st_i32( iv_addr = s2 + 64 iv_val = s3 ).
+      s2 = l4.
+      s3 = 32.
+      s2 = s2 + s3.
+      mv_g0 = s2.
+      IF s1 <> 0. EXIT. ENDIF. " br_if 0
+      s1 = p0.
+      s2 = -1.
+      mem_st_i32( iv_addr = s1 + 64 iv_val = s2 ).
     ENDDO.
-    s2 = p0.
-    s3 = p1.
-    s4 = p2.
-    s2 = f665( p0 = s2 p1 = s3 p2 = s4 ).
-    rv = s2.
+    s1 = p0.
+    s2 = p1.
+    s3 = p2.
+    s1 = f665( p0 = s1 p1 = s2 p2 = s3 ).
+    rv = s1.
   ENDMETHOD.
   METHOD f959.
     DATA l3 TYPE i.

@@ -626,7 +626,8 @@ CLASS zcl_qjs_c17 IMPLEMENTATION.
     DATA s7 TYPE i.
     DATA lv_br TYPE i.
     s0 = p0.
-    " IMPORT: wasi_snapshot_preview1.proc_exit (TODO)
+    " WASI proc_exit: s0
+    RETURN. " exit
     RAISE EXCEPTION TYPE cx_sy_program_error. " unreachable
   ENDMETHOD.
   METHOD f1396.

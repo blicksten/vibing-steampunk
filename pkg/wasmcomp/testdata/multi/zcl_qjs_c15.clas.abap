@@ -1630,7 +1630,7 @@ CLASS zcl_qjs_c15 IMPLEMENTATION.
     DATA lv_br TYPE i.
     s0 = p0.
     s0 = mem_ld_i32( s0 + 56 ).
-    " IMPORT: wasi_snapshot_preview1.fd_close (TODO)
+    s0 = 0. " WASI fd_close: stub
     s1 = 65535.
     s0 = zcl_wasm_rt=>and32( iv_a = s0 iv_b = s1 ).
     p0 = s0.

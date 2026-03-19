@@ -18540,127 +18540,145 @@ CLASS zcl_qjs_c05 IMPLEMENTATION.
                       s3 = l3.
                       s4 = 28.
                       s3 = s3 + s4.
-                      " IMPORT: wasi_snapshot_preview1.fd_write (TODO)
-                      l4 = s3.
-                      IF s3 <> 0.
-                        s3 = l6.
-                        s4 = l4.
-                        s5 = 65535.
-                        s4 = zcl_wasm_rt=>and32( iv_a = s4 iv_b = s5 ).
-                        l4 = s4.
-                        s5 = 8.
-                        IF s4 = s5. s4 = 1. ELSE. s4 = 0. ENDIF.
-                        IF s4 <> 0. lv_br = 1. EXIT. ENDIF. " br_if 1
-                        s3 = l2.
-                        s4 = 0.
-                        mem_st_i32_8( iv_addr = s3 + 28 iv_val = s4 ).
-                        s3 = l4.
-                        s4 = 27.
-                        IF s3 = s4. s3 = 1. ELSE. s3 = 0. ENDIF.
-                        IF s3 <> 0. lv_br = 4. EXIT. ENDIF. " br_if 4
-                        s3 = l4.
-                        s3 = zcl_wasm_rt=>extend_u32( s3 ).
-                        s4 = 32.
-                        s3 = zcl_wasm_rt=>shl64( iv_val = s3 iv_shift = s4 ).
+                      " WASI fd_write: fd=s0 iovs=s1 iovs_len=s2 nwritten=s3
+                      DATA lv_wasi_written TYPE i.
+                      DATA lv_wasi_iov_ptr TYPE i.
+                      DATA lv_wasi_iov_len TYPE i.
+                      DATA lv_wasi_str_ptr TYPE i.
+                      DATA lv_wasi_str_len TYPE i.
+                      lv_wasi_written = 0.
+                      DO s2 TIMES.
+                        lv_wasi_iov_ptr = s1 + ( sy-index - 1 ) * 8.
+                        PERFORM mem_ld_i32 USING lv_wasi_iov_ptr CHANGING lv_wasi_str_ptr.
+                        PERFORM mem_ld_i32 USING lv_wasi_iov_ptr + 4 CHANGING lv_wasi_str_len.
+                        IF lv_wasi_str_len > 0.
+                          DATA(lv_wasi_bytes) = mv_mem+lv_wasi_str_ptr(lv_wasi_str_len).
+                          " Output bytes (could be WRITE or collect in buffer)
+                        ENDIF.
+                        lv_wasi_written = lv_wasi_written + lv_wasi_str_len.
+                      ENDDO.
+                      PERFORM mem_st_i32 USING s3 lv_wasi_written.
+                      s0 = 0. " errno = success
+                      l4 = s0.
+                      IF s0 <> 0.
+                        s0 = l6.
+                        s1 = l4.
+                        s2 = 65535.
+                        s1 = zcl_wasm_rt=>and32( iv_a = s1 iv_b = s2 ).
+                        l4 = s1.
+                        s2 = 8.
+                        IF s1 = s2. s1 = 1. ELSE. s1 = 0. ENDIF.
+                        IF s1 <> 0. lv_br = 1. EXIT. ENDIF. " br_if 1
+                        s0 = l2.
+                        s1 = 0.
+                        mem_st_i32_8( iv_addr = s0 + 28 iv_val = s1 ).
+                        s0 = l4.
+                        s1 = 27.
+                        IF s0 = s1. s0 = 1. ELSE. s0 = 0. ENDIF.
+                        IF s0 <> 0. lv_br = 4. EXIT. ENDIF. " br_if 4
+                        s0 = l4.
+                        s0 = zcl_wasm_rt=>extend_u32( s0 ).
+                        s1 = 32.
+                        s0 = zcl_wasm_rt=>shl64( iv_val = s0 iv_shift = s1 ).
                         lv_br = 2. EXIT. " br 2
                       ELSE.
                       ENDIF.
-                      s4 = l3.
-                      s4 = mem_ld_i32( s4 + 28 ).
+                      s1 = l3.
+                      s1 = mem_ld_i32( s1 + 28 ).
                     ENDDO.
-                    l4 = s4.
-                    s4 = l2.
-                    s5 = 0.
-                    mem_st_i32_8( iv_addr = s4 + 28 iv_val = s5 ).
-                    s4 = l4.
-                    IF s4 <> 0. lv_br = 1. EXIT. ENDIF. " br_if 1
-                    s4 = 4789799068106754.
+                    l4 = s1.
+                    s1 = l2.
+                    s2 = 0.
+                    mem_st_i32_8( iv_addr = s1 + 28 iv_val = s2 ).
+                    s1 = l4.
+                    IF s1 <> 0. lv_br = 1. EXIT. ENDIF. " br_if 1
+                    s1 = 4789799068106754.
                   ENDDO.
-                  l9 = s4.
-                  s4 = p1.
-                  IF s4 <> 0.
-                    s4 = l7.
-                    s5 = l8.
-                    s6 = l6.
-                    s4 = f157( p0 = s4 p1 = s5 p2 = s6 ).
-                    s4 = l2.
-                    s5 = l6.
-                    mem_st_i32( iv_addr = s4 + 24 iv_val = s5 ).
+                  l9 = s1.
+                  s1 = p1.
+                  IF s1 <> 0.
+                    s1 = l7.
+                    s2 = l8.
+                    s3 = l6.
+                    s1 = f157( p0 = s1 p1 = s2 p2 = s3 ).
+                    s1 = l2.
+                    s2 = l6.
+                    mem_st_i32( iv_addr = s1 + 24 iv_val = s2 ).
                   ELSE.
                   ENDIF.
+                  s1 = 4.
+                  s2 = l9.
+                  s3 = l9.
+                  s4 = 255.
+                  s3 = zcl_wasm_rt=>and64( iv_a = s3 iv_b = s4 ).
                   s4 = 4.
-                  s5 = l9.
-                  s6 = l9.
-                  s7 = 255.
-                  s6 = zcl_wasm_rt=>and64( iv_a = s6 iv_b = s7 ).
-                  s7 = 4.
-                  IF s6 = s7. s6 = 1. ELSE. s6 = 0. ENDIF.
-                  IF s6 <> 0. s4 = s4. ELSE. s4 = s5. ENDIF.
-                  l9 = s4.
+                  IF s3 = s4. s3 = 1. ELSE. s3 = 0. ENDIF.
+                  IF s3 <> 0. s1 = s1. ELSE. s1 = s2. ENDIF.
+                  l9 = s1.
                   lv_br = 5. EXIT. " br 5
                 ENDDO.
-                s4 = p1.
-                s5 = l4.
-                s4 = s4 + s5.
-                p1 = s4.
+                s1 = p1.
+                s2 = l4.
+                s1 = s1 + s2.
+                p1 = s1.
               ENDDO.
-              s4 = p1.
-              s5 = l5.
-              IF zcl_wasm_rt=>lt_u32( iv_a = s4 iv_b = s5 ) = abap_true. s4 = 1. ELSE. s4 = 0. ENDIF.
-              IF s4 <> 0. EXIT. ENDIF. " br_if 0
+              s1 = p1.
+              s2 = l5.
+              IF zcl_wasm_rt=>lt_u32( iv_a = s1 iv_b = s2 ) = abap_true. s1 = 1. ELSE. s1 = 0. ENDIF.
+              IF s1 <> 0. EXIT. ENDIF. " br_if 0
             ENDDO.
             lv_br = 1. EXIT. " br 1
           ELSE.
           ENDIF.
-          s4 = 1116336.
-          f1109( p0 = s4 ).
+          s1 = 1116336.
+          f1109( p0 = s1 ).
           RAISE EXCEPTION TYPE cx_sy_program_error. " unreachable
         ENDDO.
-        s4 = p1.
-        s5 = l5.
-        IF zcl_wasm_rt=>gt_u32( iv_a = s4 iv_b = s5 ) = abap_true. s4 = 1. ELSE. s4 = 0. ENDIF.
-        IF s4 <> 0. lv_br = 1. EXIT. ENDIF. " br_if 1
-        s4 = l2.
-        s5 = 0.
-        mem_st_i32( iv_addr = s4 + 24 iv_val = s5 ).
+        s1 = p1.
+        s2 = l5.
+        IF zcl_wasm_rt=>gt_u32( iv_a = s1 iv_b = s2 ) = abap_true. s1 = 1. ELSE. s1 = 0. ENDIF.
+        IF s1 <> 0. lv_br = 1. EXIT. ENDIF. " br_if 1
+        s1 = l2.
+        s2 = 0.
+        mem_st_i32( iv_addr = s1 + 24 iv_val = s2 ).
       ENDDO.
-      s4 = p0.
-      s5 = l9.
-      zcl_wasm_rt=>mem_st_i64( EXPORTING iv_val = s5 iv_addr = s4 + 0 CHANGING cv_mem = mv_mem ).
-      s4 = l2.
-      s5 = l2.
-      s5 = mem_ld_i32( s5 + 12 ).
-      s6 = 1.
-      s5 = s5 + s6.
-      mem_st_i32( iv_addr = s4 + 12 iv_val = s5 ).
-      s4 = l2.
-      s5 = l2.
-      s5 = mem_ld_i32( s5 + 4 ).
-      s6 = 1.
-      s5 = s5 - s6.
-      p0 = s5.
-      mem_st_i32( iv_addr = s4 + 4 iv_val = s5 ).
-      s4 = p0.
-      IF s4 = 0. s4 = 1. ELSE. s4 = 0. ENDIF.
-      IF s4 <> 0.
-        s4 = l2.
-        s5 = 0.
-        mem_st_i32_8( iv_addr = s4 + 8 iv_val = s5 ).
-        s4 = l2.
-        s5 = 0.
-        mem_st_i32( iv_addr = s4 iv_val = s5 ).
+      s1 = p0.
+      s2 = l9.
+      zcl_wasm_rt=>mem_st_i64( EXPORTING iv_val = s2 iv_addr = s1 + 0 CHANGING cv_mem = mv_mem ).
+      s1 = l2.
+      s2 = l2.
+      s2 = mem_ld_i32( s2 + 12 ).
+      s3 = 1.
+      s2 = s2 + s3.
+      mem_st_i32( iv_addr = s1 + 12 iv_val = s2 ).
+      s1 = l2.
+      s2 = l2.
+      s2 = mem_ld_i32( s2 + 4 ).
+      s3 = 1.
+      s2 = s2 - s3.
+      p0 = s2.
+      mem_st_i32( iv_addr = s1 + 4 iv_val = s2 ).
+      s1 = p0.
+      IF s1 = 0. s1 = 1. ELSE. s1 = 0. ENDIF.
+      IF s1 <> 0.
+        s1 = l2.
+        s2 = 0.
+        mem_st_i32_8( iv_addr = s1 + 8 iv_val = s2 ).
+        s1 = l2.
+        s2 = 0.
+        mem_st_i32( iv_addr = s1 iv_val = s2 ).
       ELSE.
       ENDIF.
-      s4 = l3.
-      s5 = 32.
-      s4 = s4 + s5.
-      mv_g0 = s4.
+      s1 = l3.
+      s2 = 32.
+      s1 = s1 + s2.
+      mv_g0 = s1.
       RETURN.
     ENDDO.
-    s4 = p1.
-    s5 = l5.
-    s6 = 1114364.
-    f1045( p0 = s4 p1 = s5 p2 = s6 ).
+    s1 = p1.
+    s2 = l5.
+    s3 = 1114364.
+    f1045( p0 = s1 p1 = s2 p2 = s3 ).
     RAISE EXCEPTION TYPE cx_sy_program_error. " unreachable
   ENDMETHOD.
   METHOD f459.
