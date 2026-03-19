@@ -39,7 +39,24 @@ Before running integration tests:
 # Verify database is accessible
 ```
 
-### 2. Run Integration Tests
+### 2. Pre-Flight Data Verification
+
+Before running tests that depend on specific data:
+```bash
+# Verify test data exists
+# Check that required records/items are present in the system
+# If missing: STOP and report as BLOCKED (do NOT run with missing data)
+```
+
+**Data readiness checklist:**
+- [ ] Required test records exist in the target system
+- [ ] Test user accounts are active and have correct permissions
+- [ ] External service dependencies are accessible
+- [ ] Test environment matches expected configuration
+
+If any check fails: Mark all dependent tests as BLOCKED, report what data is missing and where it should be created, and do NOT run the tests. Flaky results from missing data are worse than a clear BLOCKED status.
+
+### 3. Run Integration Tests
 
 ```bash
 # Run all integration tests
@@ -52,7 +69,7 @@ uv run python -m pytest -m integration -v --tb=long -vv
 uv run python -m pytest tests/integration/test_mcp_search.py -v
 ```
 
-### 3. Run E2E Tests
+### 4. Run E2E Tests
 
 ```bash
 # Start web server (if not running)
@@ -65,7 +82,7 @@ uv run python -m pytest -m e2e -v --headed
 uv run python -m pytest -m e2e -v --screenshot=on
 ```
 
-### 4. Smoke Tests (Manual or Playwright)
+### 5. Smoke Tests (Manual or Playwright)
 
 Use playwright to verify critical paths:
 ```python
@@ -82,25 +99,36 @@ network_errors = await page.network_requests()
 snapshot = await page.accessibility.snapshot()
 ```
 
-### 5. Analyze Failures
+### 6. Analyze Failures
 
 For each failed test:
 1. **Read test output**: Understand what assertion failed
-2. **Categorize failure type**:
+2. **Identify the step**: Which specific assertion or step caused the failure
+3. **Categorize failure type**:
    - Service unavailable (MCP server down, DB connection lost)
    - Service returned error (MCP tool error, API 500)
    - Test bug (wrong assertion, outdated fixture format)
    - Application bug (logic error, parser broken)
    - Flaky test (passes on retry, timing issue)
-3. **Collect evidence**: Error messages, stack traces, logs
-4. **Determine root cause**: Which component failed and why
+   - Incomplete execution (only subset of steps ran)
+   - Missing data (BLOCKED — test data not created)
+4. **Collect evidence**: Error messages, stack traces, logs
+5. **Determine root cause**: Which component failed and why
 
-### 6. Check Error Monitoring
+### 7. Check Error Monitoring
 
 ```bash
 # Use Sentry MCP to check for new errors
 sentry list-issues --project pdap-hub --since 1h
 ```
+
+## Report File Organization
+
+Each test execution creates a new folder. All artifacts go inside:
+- **Folder**: `reports/Test_YYYYMMDD_HHMMSS/` (timestamp = execution start time)
+- **Report file**: `Section[N]_test_report_[SYSID]_YYYYMMDD_HHMMSS.md`
+  - `[N]` = section number from the test plan
+  - `[SYSID]` = system/project identifier (e.g., `FRAP`, `PDAP`, `FIORI`)
 
 ## Failure Categories
 
@@ -136,10 +164,24 @@ sentry list-issues --project pdap-hub --since 1h
 
 **Action**: Run 5 times, calculate pass rate, report flakiness
 
+### Incomplete Execution (subset of steps run)
+- Only N of M steps were executed
+- **Status: INCOMPLETE** (not PASS)
+- Report: which steps ran, which didn't, why stopped
+- Action: Fix the blocker and re-run the full suite
+
+### Blocked (missing test data)
+- Required test records do not exist in the system
+- **Status: BLOCKED** (not PASS, not FAIL)
+- Report: what data is missing, where it should be created
+- Action: Create test data, then re-run
+
 ## Test Report Format
 
 ```markdown
 # Integration Test Report
+**Report file**: Section[N]_test_report_[SYSID]_YYYYMMDD_HHMMSS.md
+**Report folder**: reports/Test_YYYYMMDD_HHMMSS/
 
 **Date**: [ISO timestamp]
 **Environment**: [local / staging / production]
@@ -148,9 +190,11 @@ sentry list-issues --project pdap-hub --since 1h
 
 ## Test Summary
 - **Total tests**: [count]
-- **Passed**: [count] ([percentage]%)
+- **Passed (all steps)**: [count] ([percentage]%)
 - **Failed**: [count] ([percentage]%)
+- **Incomplete (partial execution)**: [count]
 - **Skipped**: [count]
+- **Blocked (missing data)**: [count]
 - **Duration**: [total time]
 
 ## Service Health
@@ -164,7 +208,9 @@ sentry list-issues --project pdap-hub --since 1h
 
 #### test_search_returns_work_items
 - **File**: tests/integration/test_mcp_search.py:45
-- **Failure**: AssertionError: Expected 'State: Active', got 'State: New'
+- **Step**: 3 — "Verify response contains field 'State: Active'"
+- **Action taken**: Checked response.state field
+- **Failure**: AssertionError: Expected 'Active', got 'New'
 - **Root cause**: Parser expects 'Active' but MCP returns 'New' for some work items
 - **Action needed**: Fix parser regex in app/services/search.py
 - **Severity**: HIGH
@@ -173,6 +219,8 @@ sentry list-issues --project pdap-hub --since 1h
 
 #### test_parse_cases_with_status
 - **File**: tests/test_parsers/test_case_parser.py:67
+- **Step**: 1 — "Parse MCP response and extract relevance field"
+- **Action taken**: Called parse_response() with fixture data
 - **Failure**: KeyError: 'relevance'
 - **Root cause**: Fixture format doesn't match real MCP response
 - **Action needed**: Update fixture to match real format
@@ -189,6 +237,24 @@ sentry list-issues --project pdap-hub --since 1h
 - **Action needed**: Increase timeout or use explicit wait
 - **Severity**: LOW
 
+### Incomplete Execution ([count])
+
+#### test_full_workflow
+- **File**: tests/integration/test_workflow.py:12
+- **Steps completed**: 1 of 4
+- **Stopped at**: Step 2 — "Submit form and verify redirect"
+- **Reason**: Element not found (form not rendered due to missing test data)
+- **Status**: INCOMPLETE (not PASS)
+- **Action needed**: Create test data and re-run
+
+### Blocked — Missing Data ([count])
+
+#### test_search_with_active_items
+- **File**: tests/integration/test_search.py:88
+- **Missing data**: Work items with State='Active' not found in test DB
+- **Action needed**: Run `python seed_data.py --state active` before re-running
+- **Status**: BLOCKED
+
 ## Smoke Test Results
 
 ### Critical Paths Verified
@@ -197,6 +263,11 @@ sentry list-issues --project pdap-hub --since 1h
 - [✓] Search returns results (/api/search?q=test)
 - [✗] Team orphans page fails (/team/orphans) - MCP timeout
 - [✓] Fixes table loads (/fixes)
+
+## Skip Log
+| Test | Reason | Condition | Action Needed |
+|------|--------|-----------|---------------|
+| [test name] | [exact reason] | [condition that triggered skip] | [what to do to un-skip] |
 
 ## Error Monitoring (Sentry)
 
@@ -223,6 +294,7 @@ sentry list-issues --project pdap-hub --since 1h
 - [ ] Fix application bugs (delegate to backend-dev)
 - [ ] Fix test bugs (delegate to test-engineer)
 - [ ] Investigate flaky tests
+- [ ] Create missing test data for BLOCKED tests
 - [ ] Re-run failed tests after fixes
 ```
 
@@ -280,6 +352,11 @@ async def smoke_test(page):
 - **Accurate categorization**: Distinguish test bugs from application bugs
 - **Service dependencies**: Document what services must be running
 - **No guessing**: If root cause is unclear, say so and suggest investigation
+- **NO MID-RUN INTERRUPTIONS**: Never pause execution to ask for confirmation. Run the full test suite to completion, then report all results.
+- **MISSING DATA = BLOCKED**: If test data does not exist, mark the test as BLOCKED (environment issue), not PASS. Document what data is missing and where it should be created.
+- **DOCUMENTED SKIPS ONLY**: Every skipped test must include: (a) exact skip reason, (b) condition that triggered skip, (c) action needed to un-skip. Add SKIP entries to the Skip Log section of the report.
+- **INCOMPLETE ≠ PASS**: A test is PASS only when ALL its steps were executed and verified. Partial execution = INCOMPLETE status.
+- **STEP-LEVEL FAILURES**: Every failed test must include which specific step failed, what action was taken at that step, and what the expected vs. actual result was.
 
 ## Collaboration Protocol
 

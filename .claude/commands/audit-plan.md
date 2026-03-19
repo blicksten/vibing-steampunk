@@ -89,14 +89,14 @@ After all specialists complete, perform holistic review:
 ## Iteration Rules
 
 If any auditor returns REJECT:
-1. Fix all CRITICAL and HIGH issues in the plan
+1. Fix all CRITICAL, HIGH, and MEDIUM issues in the plan — zero MEDIUM+ required for APPROVE
 2. Re-submit to the SAME auditor for re-review
 3. After specialist fixes, Chief Architect re-reviews the whole plan
-4. Repeat until all APPROVE or ESCALATE
+4. Audit is recursive: repeat until all APPROVE (zero MEDIUM+) or ESCALATE
 
 ## Key Principles
 
 - **No inventing concerns** — Only flag concrete, verifiable issues based on actual code/docs
 - **Evidence-based** — Every finding must reference specific code, patterns, or documentation
 - **Constructive** — Every REJECT must include a specific fix recommendation
-- **Proportional** — Don't block plans for LOW severity issues; focus on CRITICAL and HIGH
+- **Proportional** — Don't block plans for LOW severity issues; focus on CRITICAL, HIGH, and MEDIUM (zero MEDIUM+ is required for APPROVE)

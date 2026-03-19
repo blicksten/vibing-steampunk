@@ -40,7 +40,8 @@ Supported workflows:
 2. dev-lead — Break into tasks, assign implementation order
 3. IMPLEMENTATION (sequential or parallel based on scope):
    → backend-dev — Service logic, API endpoints
-   → frontend-dev — Templates, CSS, client-side
+   → frontend-dev — Templates, CSS, client-side (optional)
+   → abap-specialist — ABAP objects, CDS views, function modules, transports (SAP projects)
    → test-engineer — Write tests in parallel with implementation
 4. code-reviewer — Review all changes (Claude + OpenAI via PAL)
    → [CV-GATE:codereview] OpenAI independent code review
@@ -51,14 +52,15 @@ Supported workflows:
    → [CV-GATE:thinkdeep] Deep security cross-validation
    → GATE: No CRITICAL or HIGH security findings
 7. doc-writer — Update documentation
-8. Human approval → Merge
+8. pm-analyst (optional) — Update sprint board: close tasks, record velocity, update work items
+9. Human approval → Merge
 ```
 
 ### Bugfix Pipeline (`/orchestrate bugfix "..."`)
 
 ```
 1. qa-lead — Investigate, reproduce, capture evidence
-2. backend-dev or frontend-dev — Implement minimal fix (root cause, not symptoms)
+2. backend-dev or frontend-dev or abap-specialist (SAP bugs) — Implement minimal fix (root cause, not symptoms)
 3. test-engineer — Add regression test (must FAIL without fix, PASS with fix)
 4. code-reviewer — Review fix + test
    → [CV-GATE:codereview] Cross-validate fix correctness
@@ -89,6 +91,13 @@ Supported workflows:
 
 ### Audit Pipeline (`/orchestrate audit "..."`)
 
+**Exit criteria:** zero CRITICAL, HIGH, and MEDIUM findings. Audit loops recursively until this state is reached.
+
+**Two-tier severity model (by design):**
+- **Audit pipelines** (`/orchestrate audit`, `/orchestrate deep-validate`): zero MEDIUM+ required — recursive until clean.
+- **Dev pipelines** (feature, bugfix, deploy, QA, refactor, etc.): zero CRITICAL/HIGH at code-review gates. MEDIUM findings are tracked but do not block these pipelines (the final audit pipeline is responsible for zero MEDIUM+).
+This differentiation is intentional: dev pipeline gates are lightweight checkpoints; audit pipelines are the quality gate for plan/change approval.
+
 ```
 1. lead-auditor — Review scope, determine expertise, assign domains
    → Write audit scope to docs/AUDIT.md
@@ -101,7 +110,35 @@ Supported workflows:
    [CV-GATE:consensus]
 4. lead-auditor — Final audit summary: combine all findings
    → Record in docs/AUDIT.md with verdicts and action items
+   → GATE: APPROVE requires zero CRITICAL, HIGH, and MEDIUM findings
+   → If REJECT with any MEDIUM+ finding → fix all MEDIUM+ issues, then restart from step 2
+   → Audit is recursive: loop steps 2-4 until zero MEDIUM+ findings or ESCALATE
+   → No cap on iterations — continue until clean state is achieved
+   → After APPROVE: output Session Summary (see below)
 ```
+
+**Session Summary (MANDATORY output after audit APPROVE or final ESCALATE — one summary per pipeline run, not after each recursive pass):**
+
+Output directly to the user — do not only write to docs/AUDIT.md:
+
+1. **What was done** — one paragraph: what changed, how many audit cycles ran, how many findings were fixed.
+
+2. **Findings table** (all findings, all cycles):
+```
+| ID | Severity | Description | Status | Action taken |
+|----|----------|-------------|--------|--------------|
+| M-01 | MEDIUM | Example finding | Fixed | Updated file:line |
+| L-02 | LOW | Example | Deferred | Tracked in docs/AUDIT.md |
+```
+Status: `Fixed` / `Deferred` / `Open (escalated)`.
+
+3. **Manual review table** (what the user must check by hand):
+```
+| Item | Why manual verification needed | Risk if skipped |
+|------|-------------------------------|-----------------|
+| Deferred finding X | Requires env-specific testing | Medium |
+```
+Include: all Deferred and Open (escalated) findings (any severity), external integrations not covered by automated tests, security controls requiring human sign-off. Exclude: Fixed findings.
 
 ### QA Pipeline (`/orchestrate qa "..."`)
 
@@ -276,23 +313,26 @@ Use when: completed changes or plans need exhaustive validation to eliminate ALL
 5. code-reviewer — Final comprehensive review of ALL changes (original + fixes)
    → PAL `codereview` on every changed file
    → [CV-GATE:codereview] Cross-validate all changes
-   → GATE: No CRITICAL findings, no HIGH findings
+   → GATE: No CRITICAL, HIGH, or MEDIUM findings
 
 6. lead-auditor — Final audit with FULL Verification Evidence
    → Must complete entire Audit Depth Checklist (from CLAUDE.md)
    → Must produce APPROVE with Verification Evidence or REJECT
    → [CV-GATE:consensus] Final cross-validation
-   → GATE: APPROVE with complete Verification Evidence
-   → If REJECT with CRITICAL or HIGH findings → HALT pipeline
+   → GATE: APPROVE with complete Verification Evidence and zero MEDIUM+ findings
+   → If REJECT with any MEDIUM+ finding → HALT pipeline
    → After HALT: fix findings (steps 3-4), then re-submit step 6
-   → Max 3 HALT-fix-resubmit cycles. After 3 → ESCALATE to user
+   → Audit is recursive: repeat HALT-fix-resubmit until zero MEDIUM+ findings
+   → After 5 HALT cycles with no progress → ESCALATE to user
+     (cap is 5: 3 was too aggressive for complex multi-domain plans requiring multiple specialist rounds)
+   → After APPROVE or final ESCALATE: output Session Summary (see Audit pipeline Session Summary block above)
 
 7. PAL `precommit` — Final pre-commit validation
    → Validate git changes, check for security issues, assess impact
-   → GATE: Clean precommit report with no CRITICAL findings
+   → GATE: Clean precommit report with no CRITICAL, HIGH, or MEDIUM findings (zero MEDIUM+)
 ```
 
-**Exit criteria:** Pipeline completes ONLY when step 6 returns APPROVE with Verification Evidence AND step 7 returns clean. No shortcuts, no "good enough" — zero CRITICAL and zero HIGH findings.
+**Exit criteria:** Pipeline completes ONLY when step 6 returns APPROVE with Verification Evidence AND step 7 returns clean. No shortcuts, no "good enough" — zero CRITICAL, zero HIGH, and zero MEDIUM findings.
 
 **HALT behavior:** When step 6 HALTs, the pipeline pauses. Fix findings, re-run steps 3-4 (fix + test), then re-submit step 6 via `complete_step`. This uses the standard HALT + re-submission pattern — no special loop engine support required.
 
@@ -342,7 +382,7 @@ CV-gates are mandatory cross-provider validation points inserted between pipelin
 - **PAL finds CRITICAL issue Claude missed** → HALT pipeline, add finding as `[O]`, re-evaluate
 - **PAL disagrees on severity** → Flag disagreement, continue with higher severity
 - **PAL finds additional non-critical issues** → Add to findings as `[O]`, continue
-- **PAL unavailable** → Log warning, continue (PAL is supplementary, not blocking)
+- **PAL unavailable** → Do NOT skip cross-validation. Launch a sub-agent via Agent tool with a different model tier (opus if current is sonnet; sonnet if current is opus) with the same prompt. Document fallback model used.
 
 **Gate Types:**
 
@@ -419,7 +459,7 @@ When launching agents, you MUST:
 
 **Only the main session may call:**
 - `mcp__orchestrator__complete_step(pipeline_id, step_output)` — after validating STEP RESULT
-- `mcp__orchestrator__start_pipeline(pipeline_type, description)` — after route_task + plan saved
+- `mcp__orchestrator__start_pipeline(pipeline_type, description, project=<basename of cwd>)` — after route_task + plan saved
 
 **Sub-agents MUST NOT call these tools directly.** Sub-agents produce STEP RESULT blocks; the main session validates and calls the authority tools. This ensures quality hooks fire correctly.
 
@@ -447,6 +487,7 @@ Every pipeline agent MUST end its response with this block:
 - pipeline_id: {pipeline-id}
 - status: COMPLETE | INCOMPLETE | FAILED | SKIPPED | NEEDS_ASSISTANCE
 - artifacts: [list of files created or modified]
+- context_files: [optional list of file paths produced/consumed by this step]
 - notes: <1-3 lines summary>
 - next: {next-agent-name or PIPELINE_COMPLETE}
 ```
@@ -455,8 +496,10 @@ Every pipeline agent MUST end its response with this block:
 - `COMPLETE` — step fully done, all artifacts written, ready for main session to call complete_step
 - `INCOMPLETE` — work partially done, main session should address the gap before continuing
 - `FAILED` — unrecoverable error, escalate to user
-- `SKIPPED` — step not applicable to this pipeline run (optional steps: frontend-dev, visual-qa)
+- `SKIPPED` — step not applicable to this pipeline run (optional steps: frontend-dev, visual-qa, abap-specialist, pm-analyst)
 - `NEEDS_ASSISTANCE` — agent encountered a blocker requiring a different specialist
+
+**`context_files` field:** Optional list of file paths produced or consumed by this step. Use this to signal which files the next agent needs to read. NEVER embed file content in STEP RESULT — list paths only.
 
 **Note on artifacts:** List file paths only, do not duplicate content. Artifacts (docs/PLAN.md, docs/REVIEW.md, etc.) are the source of truth for durable context. STEP RESULT is ephemeral routing metadata — it indexes artifacts, not replaces them.
 
@@ -469,6 +512,59 @@ After receiving a Task agent response:
 3. **Verify artifacts** — confirm listed artifact files exist before calling complete_step
 4. **Call complete_step yourself** — `mcp__orchestrator__complete_step(pipeline_id, step_output)` after validation
 5. **If complete_step returns HALT** — fix the issue (run PAL/audit if needed), then resubmit the step
+
+### Phase Memory Protocol
+
+At the end of each pipeline step, agents MUST write a phase memory file to preserve context for future steps. Use the `memory` tool commands (`view`, `create`, `replace_file`).
+
+**File path convention:** `phase-{N}-{step_name}.md` (e.g., `phase-1-architect.md`)
+**Storage location:** `~/.claude/agent-memory/<pipeline_id>/` (managed by orchestrator/memory.py)
+**Max size:** 500 words per file (hard limit: 50 KB enforced by memory.py)
+
+**Required content structure:**
+
+```markdown
+# Phase {N} — {Step Name}
+
+## Decisions
+- Key architectural choices made in this step
+
+## Artifacts
+- List of file paths created or modified
+
+## Open Issues
+- Unresolved items that need attention in later steps
+
+## Next Phase Context
+- What the next agent needs to know to continue effectively
+```
+
+**At step start:** Call `view(pipeline_id, path=None)` to read the index and load the most recent phase file for context. Cross-phase reads require explicit `path=` argument.
+
+**At step end:** Call `create(pipeline_id, path="phase-N-name.md", content=...)` or `replace_file(...)` to persist phase memory.
+
+**NEVER embed file content in STEP RESULT** — list paths in `context_files` only. Phase memory files are the durable context vehicle; STEP RESULT is ephemeral routing metadata.
+
+### Context Editing API Configuration
+
+When making direct Claude API calls from the orchestrator (not via Claude Code), include the following `context_management` configuration to reduce token waste from accumulated tool results:
+
+```python
+# Beta header required
+headers = {"anthropic-beta": "context-management-2025-06-27"}
+
+# Request body context_management block
+"context_management": {
+    "type": "clear_tool_uses_20250919",
+    "threshold": {"type": "input_tokens", "threshold_tokens": 80000},
+    "keep_last_n_tool_uses": 5,
+    "exclude_tools": ["memory"]   # preserve memory tool results across compaction
+}
+```
+
+**Rationale:** At 80K input tokens the API automatically discards old tool-use/tool-result pairs (keeping the last 5), which prevents context window exhaustion on long pipelines. Memory tool results are excluded so phase context persists across compaction boundaries.
+
+**Note:** This configuration is for direct API calls only. Claude Code sessions use the `/compact` command and `compact-state-inject.sh` hook for context management.
 
 ## Agent Chaining Rules
 

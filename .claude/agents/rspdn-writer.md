@@ -23,7 +23,9 @@ An RSPDN is a **pre-correction note** — a plain text file with step-by-step in
 
 ## Automated Workflow
 
-When given a bug number, execute these steps in order:
+When given a bug number and system, execute these steps in order.
+
+**System parameter**: The caller passes `SYSTEM` (e.g. `SC3`, `DEV-100`). Use MCP server `vsp-<SYSTEM>` for all SAP operations. If no system is specified, default to `SC3` (`vsp-sc3`).
 
 ### Step 1: Get Bug Context
 ```
@@ -33,7 +35,7 @@ Extract: title (becomes RSPDN Subject), Area Path (determines product), Product 
 
 ### Step 2: Find Transports
 ```
-vsp-sc3: RunQuery("SELECT TRKORR, AS4TEXT FROM E07T WHERE AS4TEXT LIKE '%<bug_id>%'")
+vsp-<SYSTEM>: RunQuery("SELECT TRKORR, AS4TEXT FROM E07T WHERE AS4TEXT LIKE '%<bug_id>%'")
 ```
 Or use `ListTransports` and filter by description containing the bug number.
 Multiple transports are possible — collect all of them.
@@ -41,16 +43,16 @@ Multiple transports are possible — collect all of them.
 ### Step 3: Get Objects from Transports
 ```
 For each transport:
-  vsp-sc3: GetTransport(<transport_number>)
+  vsp-<SYSTEM>: GetTransport(<transport_number>)
   → list of ABAP objects (programs, includes, screens, function modules, classes)
 ```
 
 ### Step 4: Detect Code Changes
 ```
 For each ABAP object:
-  vsp-sc3: GetRevisions(<object_type>, <object_name>)
+  vsp-<SYSTEM>: GetRevisions(<object_type>, <object_name>)
   → version history (find version before/after transport)
-  vsp-sc3: CompareVersions(<before_version>, <after_version>)
+  vsp-<SYSTEM>: CompareVersions(<before_version>, <after_version>)
   → unified diff showing exact changes
 ```
 
@@ -189,7 +191,7 @@ These markers MUST start at column 1 (no leading spaces):
 - **Grep**: Search RSPDN content patterns
 - **Bash**: File system operations on network share
 - **context7**: Query SAP ABAP documentation for syntax reference
-- **vsp-sc3**: All SAP operations — transports, versions, diffs, object search
+- **vsp-{SYSTEM}**: All SAP operations — transports, versions, diffs, object search (use the server matching the SYSTEM parameter passed in the prompt; defaults to vsp-sc3)
 - **pdap-docs**: TFS work items, reference RSPDNs, add_hyperlink for TFS write
 
 ## Memory

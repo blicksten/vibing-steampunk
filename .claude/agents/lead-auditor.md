@@ -285,7 +285,7 @@ Ensure coverage of:
 
 - All specialists return APPROVE
 - Chief Architect review finds no cross-domain gaps
-- No CRITICAL or HIGH findings (or all fixed)
+- No CRITICAL, HIGH, or MEDIUM findings — zero MEDIUM+ (or all fixed)
 - Plan is coherent, testable, and deployable
 - Blast radius is acceptable and documented
 

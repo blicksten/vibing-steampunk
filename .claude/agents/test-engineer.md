@@ -164,6 +164,53 @@ tests/
     └── mock_search_results.py
 ```
 
+## Test Data Management
+
+### Pre-Test Data Setup Protocol
+
+Tests MUST NOT rely on manually pre-existing data in the target system. Use one of these approaches:
+
+**Option A: Setup/Teardown Fixtures**
+```python
+@pytest.fixture
+def test_work_item(db_session):
+    """Create test data before test, clean up after."""
+    item = WorkItem(title="Test Item", state="Active")
+    db_session.add(item)
+    db_session.commit()
+    yield item
+    # Teardown
+    db_session.delete(item)
+    db_session.commit()
+```
+
+**Option B: Test Database with Seed Data**
+```python
+# conftest.py
+@pytest.fixture(scope="session")
+def test_db():
+    """Initialize test DB with seed data."""
+    db = create_test_database()
+    seed_test_data(db)
+    yield db
+    db.drop_all()
+```
+
+**Option C: Mock/Stub External Dependencies**
+```python
+@pytest.fixture
+def mock_external_api(monkeypatch):
+    """Mock external API to avoid real data dependency."""
+    monkeypatch.setattr("app.services.api_client", MockApiClient())
+```
+
+### Test Data Rules
+- **NEVER assume test data exists** in the target environment
+- **ALWAYS create data programmatically** in fixtures or setup scripts
+- **ALWAYS clean up after tests** (teardown or test DB rollback)
+- **Document data dependencies** in test docstrings: what data must exist and why
+- If data cannot be created programmatically → mark test with `@pytest.mark.requires_manual_setup` and document exact setup steps in the docstring
+
 ## Running Tests
 
 ```bash

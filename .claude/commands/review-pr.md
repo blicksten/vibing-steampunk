@@ -54,9 +54,11 @@ Analyze the diff for:
 - **Test coverage** — Are new paths tested?
 - **Documentation** — Are docs updated for API/behavior changes?
 
-### Step 4: OpenAI Cross-Validation (if PAL MCP available)
+### Step 4: Cross-Validation
 
 Call PAL `codereview` tool with the diff to get an independent OpenAI review. Compare findings.
+
+If PAL MCP is unavailable: launch a sub-agent via the Agent tool with a different model tier (opus if current session is sonnet; sonnet if current session is opus) with the same review prompt. Document which fallback model was used.
 
 ### Step 5: Produce Review Report
 

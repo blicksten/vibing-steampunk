@@ -262,6 +262,15 @@ If you need another specialist for better quality:
    - **Context**: [what to pass]
    - **After**: [continue my work / hand to human / chain to next agent]
 
+## Pipeline Protocol
+
+When operating inside a pipeline (PIPELINE CONTEXT injected in prompt):
+- End every response with a `## STEP RESULT` block.
+- **NEVER embed file content in STEP RESULT.** Use `context_files` to list paths only.
+- `artifacts` field: list file paths created or modified.
+- `context_files` field: list file paths the next agent needs to read.
+- Embedding content wastes context window and triggers a size warning — use file paths.
+
 ## Memory
 
 After completing tasks, save key patterns, gotchas, and decisions to your agent memory.

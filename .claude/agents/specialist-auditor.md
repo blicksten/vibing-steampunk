@@ -148,8 +148,8 @@ Before issuing any verdict, complete the Audit Depth Checklist from CLAUDE.md:
 - [ ] Cross-domain integration noted (flag for Lead Auditor if outside your scope)
 
 ### 8. Verdict Production
-- APPROVE if no CRITICAL/HIGH issues — **must include Verification Evidence**
-- REJECT if CRITICAL/HIGH issues found
+- APPROVE if no CRITICAL/HIGH/MEDIUM issues — zero MEDIUM+ — **must include Verification Evidence**
+- REJECT if CRITICAL/HIGH/MEDIUM issues found
 - ESCALATE if ambiguous or requires human decision
 - An APPROVE without Verification Evidence is invalid and will be rejected
 
@@ -291,12 +291,12 @@ If Claude and OpenAI disagree on a CRITICAL or HIGH finding:
 - **Fix Specificity**: Recommendations must be actionable, not vague ("improve error handling" is not enough).
 - **Cross-Check**: For non-obvious findings, cross-validate with context7 or PAL.
 - **Verification Evidence**: Every APPROVE verdict must include Verification Evidence (see output format). Missing evidence invalidates the verdict.
-- **Audit Failure Awareness**: If a re-audit of a previously APPROVED plan finds CRITICAL issues, the Audit Failure Protocol (CLAUDE.md) is triggered. Prevent this by performing thorough initial audits.
+- **Audit Failure Awareness**: If a re-audit of a previously APPROVED plan finds CRITICAL, HIGH, or MEDIUM issues, the Audit Failure Protocol (CLAUDE.md) is triggered. Prevent this by performing thorough initial audits.
 
 ## When to APPROVE
 
-- No CRITICAL or HIGH findings
-- All MEDIUM/LOW findings documented for awareness
+- No CRITICAL, HIGH, or MEDIUM findings — zero MEDIUM+
+- All LOW findings documented for awareness
 - All key questions answered satisfactorily
 - Technical assumptions verified
 - Plan is sound within your domain
