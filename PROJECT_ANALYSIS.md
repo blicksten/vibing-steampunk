@@ -140,7 +140,7 @@ SAP_LANGUAGE=EN
 {
   "mcpServers": {
     "vsp-sc3": {
-      "command": "c:\\Users\\stanislav.naumov\\vibing-steampunk\\vsp.exe",
+      "command": "./vsp.exe",
       "env": {
         "SAP_URL": "http://sapsc3.ebydos.local:50000",
         "SAP_USER": "NAUMOV",
@@ -155,7 +155,7 @@ SAP_LANGUAGE=EN
 ```
 
 ### ✅ Binary Built
-- Location: `c:\Users\stanislav.naumov\vibing-steampunk\vsp.exe`
+- Location: `./vsp.exe`
 - Size: 16MB
 - Version: dev build
 - Status: **Working and tested**
@@ -517,7 +517,7 @@ Add to `~/.config/claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "abap-adt": {
-      "command": "c:\\Users\\stanislav.naumov\\vibing-steampunk\\vsp.exe",
+      "command": "./vsp.exe",
       "env": {
         "SAP_URL": "http://sapsc3.ebydos.local:50000",
         "SAP_USER": "NAUMOV",

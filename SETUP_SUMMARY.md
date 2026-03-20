@@ -45,7 +45,7 @@ SAP_LANGUAGE=EN
 {
   "mcpServers": {
     "vsp-sc3": {
-      "command": "c:\\Users\\stanislav.naumov\\vibing-steampunk\\vsp.exe",
+      "command": "./vsp.exe",
       "env": {
         "SAP_URL": "http://sapsc3.ebydos.local:50000",
         "SAP_USER": "NAUMOV",
@@ -62,7 +62,7 @@ SAP_LANGUAGE=EN
 
 ### 3. Binary Built
 ```bash
-Binary: c:\Users\stanislav.naumov\vibing-steampunk\vsp.exe
+Binary: ./vsp.exe
 Size:   16MB
 Go:     1.25.6
 Status: ✅ Working
