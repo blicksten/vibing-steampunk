@@ -55,19 +55,37 @@ vsp system info
 
 **Requirements:** Standard ADT. No ZADT_VSP needed.
 
-### Call Graph
+### Call Graph & Dependency Analysis
 
 ```bash
-# Show what an object calls
+# Show what an object uses (callees)
 vsp graph CLAS ZCL_MY_CLASS
 vsp graph CLAS ZCL_MY_CLASS --depth 2
 
-# Show what calls an object
+# Show what uses an object (callers / where-used)
 vsp graph CLAS ZCL_MY_CLASS --direction callers
 
-# Show both directions
+# Both directions
 vsp graph CLAS ZCL_MY_CLASS --direction both
+
+# Works for all object types
+vsp graph INTF ZIF_MY_INTERFACE --direction callers
+vsp graph PROG ZREPORT
+vsp graph TRAN SE80           # resolves transaction → program automatically
+
+# Package dependency analysis + transport readiness
+vsp deps '$ZADT_VSP'
+vsp deps '$ZADT_VSP' --format summary
+vsp deps '$ZFINANCE' --include-subpackages
+vsp deps '$TMP' --object ZCL_MY_CLASS
 ```
+
+`graph` uses ADT call graph API when available, falls back to **WBCROSSGT + CROSS** tables automatically (same approach as SAP's where-used list).
+
+`deps` analyzes all objects in a package and classifies references as:
+- **Internal** — within the same package (safe)
+- **External custom** — Z/Y objects in other packages (must transport first)
+- **SAP standard** — always available on target system
 
 **Requirements:** Standard ADT. No ZADT_VSP needed.
 
@@ -179,6 +197,7 @@ vsp copy backup.zip '$TMP'
 | `source read/write/edit` | ✅ | — | — | — |
 | `context` (+ `--depth`) | ✅ | — | — | — |
 | `graph` | ✅ | — | — | — |
+| `deps` | ✅ | — | — | — |
 | `search` | ✅ | — | — | — |
 | `query` | ✅ | — | — | — |
 | `grep` | ✅ | — | — | — |
@@ -206,9 +225,10 @@ vsp copy backup.zip '$TMP'
 vsp is designed to work with what's available:
 
 1. **No SAP connection?** → `lint`, `parse`, `compile wasm` work fully offline
-2. **Standard ADT only?** → `source`, `search`, `query`, `grep`, `test`, `atc`, `deploy` all work
+2. **Standard ADT only?** → `source`, `search`, `query`, `grep`, `graph`, `deps`, `test`, `atc`, `deploy` all work
 3. **ZADT_VSP installed?** → `export`, `execute` (via WebSocket), `debug` (via RFC) become available
 4. **Missing component?** → Clear error messages tell you what to install and how
+5. **ADT call graph unavailable?** → `graph` falls back to WBCROSSGT/CROSS tables automatically
 
 ```
 $ vsp execute "WRITE 'hello'."
@@ -267,4 +287,10 @@ vsp -s dev deploy ./build/zcl_wasm_calculator.clas.abap '$TMP'
 
 # Query and filter
 vsp -s dev query TADIR --where "DEVCLASS = '\$TMP'" --top 50 | grep CLAS
+
+# Check transport readiness before release
+vsp -s dev deps '$ZFINANCE' --format summary
+
+# Graph: who uses our interface?
+vsp -s dev graph INTF ZIF_ORDER_SERVICE --direction callers
 ```

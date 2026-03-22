@@ -7,21 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.32.0] - 2026-03-22
 ### Features
 
-- **CLI Toolchain** — Full ABAP development from the terminal:
-  - `vsp query <table> --top N --where "..."` — query SAP tables (standard ADT)
-  - `vsp grep <pattern> --package PKG` — search source code across packages
-  - `vsp system info` — SAP version, kernel, ZADT_VSP check
-  - `vsp lint` — offline ABAP linter (7 rules, no SAP needed)
-  - `vsp execute <code|file>` — run ABAP on SAP
-  - `vsp compile wasm <file>` — WASM→ABAP compiler (offline)
-  - `vsp compile ts <file>` — TypeScript→ABAP transpiler
-  - `vsp parse` — ABAP parser with text/json/summary output
-- **CLI Documentation** — `docs/cli-guide.md` with feature requirements matrix showing which commands need Standard ADT, ZADT_VSP, Node.js, or work fully offline.
-- **WASM Self-Host Compiler Verified** — 3-way WASM correctness proof:
-  1. Native WASM (Node.js): 51/51 PASS
-  2. Go WASM→ABAP compiler: compiles OK
-  3. ABAP self-host on SAP A4H: 11/11 PASS (12 functions: add, factorial, fibonacci, gcd, is_prime, abs, max, min, pow, sum_to, collatz, select)
-- **ABAP Linter** — 8 lint rules, 100% oracle match on 4 rules vs TypeScript abaplint, 795μs/file
+- **CLI Toolchain** — 28 commands, full ABAP DevOps from the terminal:
+  - `vsp query <table> --top N --where "..."` — query SAP tables
+  - `vsp grep <pattern> --package PKG` — search source code
+  - `vsp graph CLAS ZCL_FOO --direction callers` — call graph with WBCROSSGT/CROSS fallback
+  - `vsp deps '$PKG' --format summary` — package dependency analysis + transport readiness
+  - `vsp system info` — SAP version, kernel, ZADT_VSP availability check
+  - `vsp lint --file src.abap` — offline ABAP linter (8 rules, abaplint-compatible)
+  - `vsp parse --stdin --format json` — offline ABAP parser
+  - `vsp compile wasm prog.wasm --class ZCL_DEMO` — WASM→ABAP compiler (offline)
+  - `vsp compile ts lexer.ts --prefix zcl_` — TypeScript→ABAP transpiler
+  - `vsp execute "WRITE 'hello'."` — run ABAP on SAP
+  - `vsp context CLAS ZCL_FOO --depth 2` — multi-level dependency context
+- **Graph with Fallback** — `vsp graph` tries ADT call graph API first, falls back to WBCROSSGT+CROSS table queries. Supports CLAS, INTF, PROG, FUGR, TRAN (resolves via TSTC).
+- **Package Deps Analysis** — `vsp deps` classifies all references as internal/external-custom/SAP-standard. Shows transport readiness: "self-contained" vs "needs prerequisites".
+- **CLI Documentation** — `docs/cli-guide.md`: complete reference, feature requirements matrix, pipeline examples, multi-system profiles.
+- **WASM Self-Host Verified** — 3-way correctness proof (Native 51/51, Go compiler OK, ABAP self-host 11/11). 12 functions including recursion, loops, if-result blocks, select.
+- **Native ABAP Lexer+Parser** — abaplint port: 100% oracle match on 22K tokens, 3K statements, 91 types.
+- **ABAP Linter** — 8 rules, 100% oracle match on 4 verified rules, 795μs/file.
+- **TS→Go Transpiler** — `pkg/ts2go`: produces valid Go from abaplint TypeScript (LexerBuffer, LexerStream, Lexer all compile).
 
 ## [2.31.0] - 2026-03-20
 ### Features

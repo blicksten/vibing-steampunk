@@ -161,18 +161,22 @@ Compile WebAssembly binaries to native ABAP. Three paths, one goal:
 
 ### Full CLI Toolchain — SAP from the Terminal
 
-Every vsp feature is available as a CLI command. No SAP GUI, no Eclipse, no IDE.
+28 commands. No SAP GUI, no Eclipse, no IDE. Most work with standard ADT; `lint`/`parse`/`compile` work fully offline.
 
 ```bash
-vsp query T000 --top 5                          # query tables
-vsp grep "SELECT.*mara" --package '$TMP'         # search source code
-vsp lint --file myclass.clas.abap                # offline ABAP linter
-vsp compile wasm program.wasm --class ZCL_DEMO   # WASM→ABAP compiler
-vsp parse --stdin --format summary < source.abap # ABAP parser
-vsp system info                                  # system version check
+vsp query T000 --top 5                           # query tables
+vsp grep "SELECT.*mara" --package '$TMP'          # search source code
+vsp graph CLAS ZCL_FOO --direction callers        # who uses this class?
+vsp deps '$ZFINANCE' --format summary             # transport readiness check
+vsp lint --file myclass.clas.abap                 # offline ABAP linter
+vsp compile wasm program.wasm --class ZCL_DEMO    # WASM→ABAP compiler
+vsp parse --stdin --format json < source.abap     # ABAP parser
+vsp context CLAS ZCL_FOO --depth 2                # compressed deps (2 levels)
+vsp system info                                   # system version + ZADT_VSP check
 ```
 
-Most commands work with standard ADT. `lint`, `parse`, `compile wasm` work fully offline.
+`graph` and `deps` use WBCROSSGT/CROSS tables as fallback when ADT call graph API is unavailable — works on any SAP system with ADT.
+
 See **[CLI Guide](docs/cli-guide.md)** for the complete reference with feature requirements matrix.
 
 ### Other Highlights
