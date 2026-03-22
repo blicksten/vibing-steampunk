@@ -502,32 +502,142 @@ func runGraph(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 
+	// Try ADT call graph first, fallback to WBCROSSGT
+	adtFailed := false
+
 	switch direction {
 	case "callers":
 		node, err := client.GetCallersOf(ctx, objURI, depth)
 		if err != nil {
-			return fmt.Errorf("failed to get callers: %w", err)
+			adtFailed = true
+		} else {
+			printGraphNode(node, 0)
 		}
-		printGraphNode(node, 0)
 	case "both":
-		fmt.Println("=== CALLEES ===")
+		fmt.Println("=== CALLEES (uses) ===")
 		callees, err := client.GetCalleesOf(ctx, objURI, depth)
-		if err == nil {
+		if err != nil {
+			adtFailed = true
+		} else {
 			printGraphNode(callees, 0)
 		}
-		fmt.Println("\n=== CALLERS ===")
+		fmt.Println("\n=== CALLERS (used by) ===")
 		callers, err := client.GetCallersOf(ctx, objURI, depth)
-		if err == nil {
+		if err != nil {
+			adtFailed = true
+		} else {
 			printGraphNode(callers, 0)
 		}
 	default: // callees
 		node, err := client.GetCalleesOf(ctx, objURI, depth)
 		if err != nil {
-			return fmt.Errorf("failed to get callees: %w", err)
+			adtFailed = true
+		} else {
+			printGraphNode(node, 0)
 		}
-		printGraphNode(node, 0)
 	}
+
+	if !adtFailed {
+		return nil
+	}
+
+	// Fallback: use WBCROSSGT table
+	fmt.Fprintf(os.Stderr, "ADT call graph not available, using WBCROSSGT table fallback\n\n")
+
+	switch direction {
+	case "callers":
+		return graphFromCross(ctx, client, name, objType, "callers")
+	case "both":
+		fmt.Println("=== USES (callees from WBCROSSGT) ===")
+		graphFromCross(ctx, client, name, objType, "callees")
+		fmt.Println("\n=== USED BY (callers from WBCROSSGT) ===")
+		return graphFromCross(ctx, client, name, objType, "callers")
+	default:
+		return graphFromCross(ctx, client, name, objType, "callees")
+	}
+}
+
+func graphFromCross(ctx context.Context, client *adt.Client, name, objType, direction string) error {
+	var sql string
+	if direction == "callers" {
+		// Who references this object? Search by NAME (any OTYPE — TY, CL, IF, DA, ME)
+		sql = fmt.Sprintf("SELECT INCLUDE, OTYPE, NAME FROM WBCROSSGT WHERE NAME LIKE '%s%%'", name)
+	} else {
+		// What does this object reference? WBCROSSGT.INCLUDE LIKE our object
+		sql = fmt.Sprintf("SELECT INCLUDE, OTYPE, NAME FROM WBCROSSGT WHERE INCLUDE LIKE '%s%%'", name)
+	}
+
+	result, err := client.RunQuery(ctx, sql, 200)
+	if err != nil {
+		return fmt.Errorf("WBCROSSGT query failed: %w", err)
+	}
+
+	if result == nil || len(result.Rows) == 0 {
+		fmt.Println("  (no references found)")
+		return nil
+	}
+
+	// Deduplicate and format
+	seen := map[string]bool{}
+	for _, row := range result.Rows {
+		var key string
+		if direction == "callers" {
+			inc := fmt.Sprintf("%v", row["INCLUDE"])
+			// Extract class name from include (e.g., "ZCL_FOO===========CM001" → "ZCL_FOO")
+			parts := strings.Split(inc, "=")
+			key = parts[0]
+		} else {
+			ot := fmt.Sprintf("%v", row["OTYPE"])
+			nm := fmt.Sprintf("%v", row["NAME"])
+			// Skip internal references
+			if strings.Contains(nm, "\\") {
+				continue // skip component refs like ZCL_FOO\DA:FIELD
+			}
+			key = fmt.Sprintf("%-4s %s", crossToADTType(ot), nm)
+		}
+		if key != "" && !seen[key] {
+			seen[key] = true
+			fmt.Printf("  %s\n", key)
+		}
+	}
+	fmt.Fprintf(os.Stderr, "\n%d unique references\n", len(seen))
 	return nil
+}
+
+func crossOType(adtType string) string {
+	switch adtType {
+	case "CLAS":
+		return "CL"
+	case "INTF":
+		return "IF"
+	case "PROG":
+		return "PR"
+	case "FUGR":
+		return "FU"
+	default:
+		return "CL"
+	}
+}
+
+func crossToADTType(crossType string) string {
+	switch strings.TrimSpace(crossType) {
+	case "CL":
+		return "CLAS"
+	case "IF":
+		return "INTF"
+	case "TY":
+		return "TYPE"
+	case "DA":
+		return "DATA"
+	case "ME":
+		return "METH"
+	case "PR":
+		return "PROG"
+	case "FU":
+		return "FUNC"
+	default:
+		return crossType
+	}
 }
 
 func printGraphNode(node *adt.CallGraphNode, indent int) {
