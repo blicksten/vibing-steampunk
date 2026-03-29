@@ -411,6 +411,36 @@ When creating a new report:
 | **WASM Block-as-METHOD** | ✅ Complete (v2.33 - CLASS g, 12K methods, QuickJS GENERATE rc=0 on SAP) |
 | **TS→ABAP Pipeline** | ✅ Proven (v2.33 - Porffor→WASM→ABAP chain verified) |
 
+### Offline ABAP Testing (without SAP)
+
+The generated ABAP can be verified offline using three tools:
+
+1. **pkg/abaplint** (Go port) — lexer + parser, `vsp lint --file` / `vsp parse --file`
+2. **@abaplint/transpiler-cli** (npm) — transpiles ABAP → JavaScript, runs locally via node
+3. **SAP GENERATE SUBROUTINE POOL** — runtime compilation on SAP (needs connection)
+
+```bash
+# Lint check (syntax only)
+vsp lint --file output.abap
+vsp parse --file output.abap --format summary
+
+# Transpile + execute (no SAP needed!)
+# Install: npm install -g @abaplint/transpiler-cli @abaplint/cli
+npx @abaplint/transpiler-cli   # transpiles ABAP → JS in current dir
+node output.mjs                 # runs the transpiled code
+
+# Full pipeline: C → LLVM → ABAP → lint → transpile → execute
+vsp compile llvm mycode.c --class zcl_x -o output.abap
+vsp lint --file output.abap
+# then transpile + run via @abaplint/transpiler-cli
+```
+
+**Key npm packages:**
+- `@abaplint/core` — ABAP lexer/parser (TypeScript, by Lars Hvam)
+- `@abaplint/cli` — CLI for abaplint
+- `@abaplint/transpiler-cli` — ABAP → JavaScript transpiler
+- `open-abap-core` — ABAP runtime library for transpiled code (auto-fetched)
+
 ### DSL & Workflow Usage
 
 ```bash
