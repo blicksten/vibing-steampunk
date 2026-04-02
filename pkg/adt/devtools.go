@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -30,10 +31,16 @@ type SyntaxCheckResult struct {
 // content is the source code to check
 func (c *Client) SyntaxCheck(ctx context.Context, objectURL string, content string) ([]SyntaxCheckResult, error) {
 	// Build the request body
-	// For class includes, the URL is used as-is (no /source/main suffix)
-	sourceURL := objectURL
+	// The checkObject URI identifies the object being checked (no /source/main needed).
+	// The artifact URI identifies the source location:
+	//   - For class includes, use the include URL directly
+	//   - For other objects, append /source/main to point to the source
+	// Using objectURL (without /source/main) for checkObject avoids exceeding
+	// SAP's URI length limit for long namespaced classes.
+	checkObjectURI := objectURL
+	artifactURI := objectURL
 	if !strings.Contains(objectURL, "/includes/") {
-		sourceURL = objectURL + "/source/main"
+		artifactURI = objectURL + "/source/main"
 	}
 	encodedContent := base64.StdEncoding.EncodeToString([]byte(content))
 
@@ -46,7 +53,7 @@ func (c *Client) SyntaxCheck(ctx context.Context, objectURL string, content stri
       </chkrun:artifact>
     </chkrun:artifacts>
   </chkrun:checkObject>
-</chkrun:checkObjectList>`, sourceURL, sourceURL, encodedContent)
+</chkrun:checkObjectList>`, checkObjectURI, artifactURI, encodedContent)
 
 	resp, err := c.transport.Request(ctx, "/sap/bc/adt/checkruns?reporters=abapCheckRun", &RequestOptions{
 		Method:      http.MethodPost,
@@ -397,18 +404,10 @@ func (c *Client) ActivatePackage(ctx context.Context, packageName string, maxObj
 	var toActivate []InactiveObjectRecord
 	packageName = strings.ToUpper(packageName)
 	for _, rec := range inactive {
-		if rec.Object == nil {
+		if rec.Object == nil || rec.Object.Name == "" || rec.Object.URI == "" {
 			continue
 		}
-		// Check if object belongs to package (URI contains package path)
-		if packageName == "" {
-			toActivate = append(toActivate, rec)
-		} else {
-			// Package is typically in the URI as parent path segment
-			// e.g., /sap/bc/adt/programs/programs/ZTEST for package $TMP
-			// We need to check the ParentURI or query object details
-			// For now, include all if filtering by package
-			// TODO: Add proper package filtering via object metadata
+		if packageName == "" || objectBelongsToPackage(rec.Object, packageName) {
 			toActivate = append(toActivate, rec)
 		}
 	}
@@ -419,15 +418,12 @@ func (c *Client) ActivatePackage(ctx context.Context, packageName string, maxObj
 	}
 
 	// Sort by dependency order (interfaces before classes, etc.)
-	for i := 0; i < len(toActivate)-1; i++ {
-		for j := i + 1; j < len(toActivate); j++ {
-			if toActivate[i].Object != nil && toActivate[j].Object != nil {
-				if objectTypePriority(toActivate[i].Object.Type) > objectTypePriority(toActivate[j].Object.Type) {
-					toActivate[i], toActivate[j] = toActivate[j], toActivate[i]
-				}
-			}
+	sort.Slice(toActivate, func(i, j int) bool {
+		if toActivate[i].Object == nil || toActivate[j].Object == nil {
+			return toActivate[i].Object != nil
 		}
-	}
+		return objectTypePriority(toActivate[i].Object.Type) < objectTypePriority(toActivate[j].Object.Type)
+	})
 
 	result := &ActivatePackageResult{
 		Activated: []ActivatedObject{},
@@ -457,6 +453,91 @@ func (c *Client) ActivatePackage(ctx context.Context, packageName string, maxObj
 	}
 
 	result.Summary = fmt.Sprintf("Activated %d objects, %d failed", len(result.Activated), len(result.Failed))
+	return result, nil
+}
+
+// objectBelongsToPackage checks if an inactive object belongs to the given package.
+// Uses ParentURI which is populated from the inactive objects XML response.
+func objectBelongsToPackage(obj *InactiveObject, packageName string) bool {
+	if obj == nil || obj.ParentURI == "" {
+		return false
+	}
+	expectedURI := "/sap/bc/adt/packages/" + strings.ToLower(packageName)
+	return strings.EqualFold(obj.ParentURI, expectedURI)
+}
+
+// ActivatePackageIterativeResult represents the result of iterative batch activation.
+type ActivatePackageIterativeResult struct {
+	Iterations     int                     `json:"iterations"`
+	TotalActivated int                     `json:"totalActivated"`
+	TotalFailed    int                     `json:"totalFailed"`
+	StillInactive  int                     `json:"stillInactive"`
+	Passes         []ActivatePackageResult `json:"passes"`
+	Summary        string                  `json:"summary"`
+}
+
+// ActivatePackageIterative activates all inactive objects in a package with multiple passes.
+// Dependencies between objects (e.g., interfaces before classes) often require multiple
+// activation passes. This method retries until no progress is made or maxIterations is reached,
+// then performs a final diagnostic check.
+func (c *Client) ActivatePackageIterative(ctx context.Context, packageName string, maxIterations int) (*ActivatePackageIterativeResult, error) {
+	if maxIterations <= 0 {
+		maxIterations = 5
+	}
+
+	result := &ActivatePackageIterativeResult{
+		Passes: []ActivatePackageResult{},
+	}
+
+	for i := 0; i < maxIterations; i++ {
+		passResult, err := c.ActivatePackage(ctx, packageName, 0)
+		if err != nil {
+			return nil, fmt.Errorf("activation pass %d failed: %w", i+1, err)
+		}
+
+		result.Passes = append(result.Passes, *passResult)
+		result.TotalActivated += len(passResult.Activated)
+		result.TotalFailed += len(passResult.Failed)
+		result.Iterations = i + 1
+
+		// No inactive objects found at all — nothing left to do
+		if len(passResult.Activated) == 0 && len(passResult.Failed) == 0 {
+			break
+		}
+
+		// Everything activated, nothing failed — done
+		if len(passResult.Failed) == 0 {
+			break
+		}
+
+		// No progress this pass — further retries won't help
+		if len(passResult.Activated) == 0 && len(passResult.Failed) > 0 {
+			break
+		}
+	}
+
+	// Final diagnostic: check if any objects in this package are still inactive
+	inactive, err := c.GetInactiveObjects(ctx)
+	if err == nil {
+		for _, rec := range inactive {
+			if rec.Object == nil || rec.Object.Name == "" || rec.Object.URI == "" {
+				continue
+			}
+			if packageName == "" || objectBelongsToPackage(rec.Object, packageName) {
+				result.StillInactive++
+			}
+		}
+	}
+
+	// Build summary
+	if result.StillInactive == 0 {
+		result.Summary = fmt.Sprintf("%d activated across %d pass(es). All objects active — deployment verified.",
+			result.TotalActivated, result.Iterations)
+	} else {
+		result.Summary = fmt.Sprintf("%d activated across %d pass(es). WARNING: %d object(s) still inactive in %s.",
+			result.TotalActivated, result.Iterations, result.StillInactive, packageName)
+	}
+
 	return result, nil
 }
 

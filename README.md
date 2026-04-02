@@ -6,197 +6,194 @@
 > Read code, write code, debug, deploy, run tests — all through natural language (or DSL for automation).
 >
 > See also: [OData ↔ MCP Bridge](https://github.com/oisee/odata_mcp_go) for SAP data access.
+>
+> **Want to review or test?** Start here: **[Reviewer Guide](docs/reviewer-guide.md)** — 8 hands-on tasks, no SAP needed.
 
 ![Vibing ABAP Developer](./media/vibing-steampunk.png)
 
-## What's New
+## 100 Stars!
 
-**v2.27.0** - RunATCCheckTransport & Configurable Timeout
-- **RunATCCheckTransport**: Run ATC code quality checks on all objects in a transport request
-- **`--timeout` / `SAP_TIMEOUT`**: Configurable HTTP request timeout (e.g., `120s`, `5m`, `0` = no timeout; default: 60s)
-- **DCLS/DDLS/BDEF Support**: ATC checks now cover CDS access controls, CDS views, and behavior definitions
-- **Security Hardened**: XML injection protection, proper URL encoding for `/NAMESPACE/` objects, versioned Content-Type headers
-- Requires `--enable-transports` flag to access transport objects
+Read the milestone article: **[Agentic ABAP at 100 Stars: The Numbers, The Community, and What's Cooking](articles/2026-02-18-100-stars-celebration.md)**
 
-**v2.26.1** - Version History & Object Comparison
-- **GetRevisions**: List version history for any ABAP object (dates, authors, transports)
-- **GetRevisionSource**: Retrieve source code of any specific version
-- **CompareVersions**: Unified diff between any two versions (or vs current)
-- **SourceSearch**: HANA fulltext search via SRIS (requires SFW5 SRIS_SOURCE_SEARCH)
-- Supports PROG, CLAS, INTF, FUNC, INCL, DDLS, BDEF, SRVD
-- See [Version History Report](reports/2026-02-20-001-version-history-implementation.md)
+## What's New — Token Efficiency Sprint
 
-**v2.25.0** - CreatePackage Software Component Support
-- **`software_component` Parameter**: Create transportable packages with proper software component (e.g., `HOME`, `ZLOCAL`)
-- **Viper Env Fix**: Comma-separated env vars (`SAP_ALLOWED_PACKAGES`, `SAP_ALLOWED_TRANSPORTS`) now parse correctly
-- **Closes #18**: Namespace URL encoding verified working
-- ⚠️ **Requires**: `--allow-transportable-edits` or `--enable-transports` flag for transportable packages
+> **Sprint goal:** make every token count. Built-in ABAP understanding, compressed dependency context, and a single-tool mode that opens the door for local/small models.
 
-**v2.24.0** - Transportable Edits Safety Feature
-- **Safety by Default**: Editing objects in transportable packages blocked unless explicitly enabled
-- **`--allow-transportable-edits`**: Opt-in flag to enable editing non-local objects
-- **Transport Whitelisting**: `--allowed-transports "A4HK*,DEVK*"` restricts allowed TRs
-- **Package Whitelisting**: `--allowed-packages "Z*,$TMP"` restricts editable packages
-- **Clear Error Messages**: Explains why edits are blocked and how to enable
-- **Transport Tool Visibility**: `ListTransports`/`GetTransport` visible when flag enabled
-- See [Transportable Edits Report](reports/2026-02-03-002-transportable-edits-safety-feature.md)
+The full version history is in [CHANGELOG.md](CHANGELOG.md).
 
-**v2.23.0** - GitExport to Disk & GetAbapHelp via WebSocket
-- **GitExport saves ZIP to disk**: No more base64 - files written directly to `output_dir`
-- **GetAbapHelp via WebSocket**: Real SAP documentation from system (uses ZADT_VSP if connected)
-- **Lazy WebSocket Connection**: WebSocket connects on-demand for Git/Help operations
-- **Embedded ABAP Sync**: Updated all ZADT_VSP classes from SAP system (2026-02-02)
+### Hyperfocused Mode — 1 Tool to Rule Them All
 
-**v2.22.0** - SAP GUI Debugger Integration
-- **SAP_TERMINAL_ID**: Share breakpoints between vsp and SAP GUI sessions
-- **MoveObject Tool**: Move ABAP objects between packages (via ZADT_VSP WebSocket)
-- **RunReport Refactor**: Uses background jobs with spool output - more reliable execution
-- **Cross-Tool Debugging**: Set breakpoint in vsp, hit it in SAP GUI (or vice versa)
-- Configure: `--terminal-id <id>` or `SAP_TERMINAL_ID=<id>` (get ID from SAP GUI registry/file)
+Single `SAP(action, target, params)` tool replaces up to 122 individual tool definitions.
 
-**v2.21.0** - Method-Level Source Operations
-- **GetSource with `method`**: Returns only the `METHOD...ENDMETHOD` block (~50 lines vs 1000+)
-- **EditSource with `method`**: Constrains find/replace to specific method - no accidental edits elsewhere
-- **WriteSource with `method`**: Replace only one method implementation (method must exist)
-- **95% Token Reduction**: Work with individual methods instead of entire classes
-- **AI-Optimized**: Faster responses, more precise edits, safer refactoring
-- See [Method-Level Operations Report](reports/2026-01-06-001-method-level-source-operations.md)
+```
+SAP(action="read",   target="CLAS ZCL_TRAVEL")
+SAP(action="edit",   target="CLAS ZCL_TRAVEL", params={"source": "..."})
+SAP(action="create", target="DEVC", params={"name": "$ZOZIK", "description": "New pkg"})
+SAP(action="help",   target="debug")
+```
 
-**v2.20.0** - CLI Mode & Multi-System Management
-- **CLI Subcommands**: `vsp search`, `vsp source`, `vsp export`, `vsp systems` - direct ABAP operations without MCP
-- **System Profiles**: `.vsp.json` config file for managing multiple SAP systems
-- **Config Conversion**: `vsp config mcp-to-vsp` / `vsp-to-mcp` - convert between config formats
-- **Cookie Auth in Profiles**: Support `cookie_file` / `cookie_string` for SSO environments
-- **Password Sync**: Passwords imported from `.mcp.json` env blocks automatically
-- **GitExport FULL Mode**: Multi-package exports with proper folder hierarchy (`src/$package/`)
-- **abapGit Compatible**: Exports now include `.abapgit.xml` with FULL folder logic
+| Metric | Focused (81 tools) | Expert (122 tools) | Hyperfocused (1 tool) |
+|--------|-------------------:|-------------------:|----------------------:|
+| MCP schema tokens | ~14,000 | ~40,000 | **~200** |
+| Reduction | — | — | **99.5%** |
 
-**v2.19.0** - Async Execution & Developer Productivity
-- **RunReportAsync**: Execute reports in background goroutine - no more timeouts!
-- **GetAsyncResult**: Poll or wait for async task completion (up to 60s)
-- **CompareSource**: Unified diff between any two ABAP objects (LCS algorithm)
-- **CloneObject**: Copy PROG/CLAS/INTF to new name with auto-replace
-- **GetClassInfo**: Quick class metadata via CAI (methods, attrs, interfaces)
-- **CreateTable**: Create DDIC tables from simple JSON definition
-- **GetSystemInfo**: Fixed to use SQL (CVERS/T000) - works across all SAP versions
-- **90 Focused / 127 Expert Tools** as of v2.27.0
+All safety controls (`--read-only`, `--allowed-ops`, `--allowed-packages`) work identically — the universal tool routes through the same handler → ADT client → `checkSafety()` chain.
 
-**v2.18.1** - Interactive CLI Debugger
-- **`vsp debug` Command**: Standalone interactive ABAP debugger
-- **REPL Interface**: s=step, n=next, o=out, c=continue, r=stack, v=vars
-- **WebSocket Breakpoints**: Set/delete/list via ZADT_VSP
-- **Attach Mode**: Wait for any debuggee or filter by user
-- **Graceful Handling**: Ctrl+C cleanup, session state management
-- Phase 1 of DAP implementation - see [DAP Plan](reports/2026-01-03-001-dap-implementation-plan.md)
+> *Thanks to [Filipp Gnilyak](https://github.com/nickel-f) for the hyperfocused mode concept.*
 
-**v2.18.0** - Report Execution Tools
-- **RunReport**: Execute selection-screen reports with params/variants, capture ALV output
-- **GetVariants**: List available variants for a report
-- **GetTextElements**: Read selection texts and text symbols
-- **SetTextElements**: Update selection texts and text symbols programmatically
-- **Tool Group "R"**: Disable report tools with `--disabled-groups R`
-- **ZADT_VSP v2.3.0**: New "report" domain for WebSocket-based report execution
-- See [Report Design](reports/2026-01-02-002-run-report-text-elements-design.md)
+### Context Compression — Built-in ABAP Understanding
 
-**v2.17.0** - Install Tools & One-Command Deployment
-- **InstallZADTVSP**: Deploy WebSocket handler to SAP in one command
-- **InstallAbapGit**: Deploy abapGit standalone or dev edition
-- **ListDependencies**: Show available installable packages
-- **Upsert Logic**: Proper CREATE vs UPDATE detection for all objects
-- Embedded ABAP source in binary - no external files needed
+`GetSource` auto-appends a **compressed dependency prologue** — public API signatures of every referenced class, interface, and FM. One MCP call = source + full surrounding context.
 
-**v2.16.0** - abapGit WebSocket Integration
-- **GitTypes Tool**: Query 158 supported abapGit object types
-- **GitExport Tool**: Export packages/objects as abapGit-compatible ZIP (base64)
-- **WebSocket Transport**: Via ZADT_VSP handler (domain: "git")
-- **abapGit Serialization**: Uses native `ZCL_ABAPGIT_OBJECTS=>serialize()` for full compatibility
-- **Tool Group "G"**: Disable Git tools with `--disabled-groups G`
-- **Requires**: abapGit installed on SAP system
-- See [abapGit Integration Report](reports/2025-12-23-002-abapgit-websocket-integration-complete.md)
+**How it works:**
 
-**v2.15.0** - Phase 5 TAS-Style Debugging Complete
-- **Variable History Recording**: Track all variable changes during debug sessions
-- **Extended Breakpoint Types**: Statement, exception, and watchpoint scripting
-- **Force Replay / State Injection**: THE KILLER FEATURE - inject captured state into live debug sessions
-- **WebSocket Debugging**: Full TPDAPI integration via ZADT_VSP WebSocket handler
-- **AMDP Debugging**: Experimental support (session works, breakpoint triggering under investigation)
-- See [Observations Since v2.12.5](reports/2025-12-22-observations-since-v2.12.5.md) for complete changelog
+```mermaid
+graph LR
+    A["GetSource<br/>ZCL_TRAVEL"] --> B["10 regex patterns<br/>scan source"]
+    B --> C["TYPE REF TO<br/>NEW · => · ~<br/>INHERITING FROM<br/>INTERFACES<br/>CALL FUNCTION<br/>CAST · RAISING"]
+    C --> D["Fetch deps<br/>5 parallel"]
+    D --> E["Extract contract<br/>PUBLIC SECTION only"]
+    E --> F["Source +<br/>Compressed Prologue"]
+```
 
-**v2.14.0** - Lua Scripting Integration (Phase 5)
-- **`vsp lua` Command**: Interactive REPL and script execution
-- **40+ Lua Bindings**: All MCP tools accessible from Lua (searchObject, getSource, setBreakpoint, etc.)
-- **Debug Session Management**: listen, attach, stepOver, stepInto, stepReturn, continue, getStack
-- **Checkpoint System**: saveCheckpoint, getCheckpoint, listCheckpoints, injectCheckpoint (Force Replay foundation)
-- **Example Scripts**: search-and-grep, call-graph-analysis, debug-session, analyze-dumps
-- See [TAS & RCA Vision](VISION.md) and [Roadmap](ROADMAP.md) for Phase 5-8 plans
+**Compression by object type:**
 
-**v2.13.0** - Call Graph & RCA Tools
-- **GetCallersOf/GetCalleesOf**: Navigate call graphs up (who calls) and down (what's called)
-- **TraceExecution**: Composite RCA tool - static graph + trace + comparison in one call
-- **CompareCallGraphs**: Find untested paths (static only) and dynamic calls (actual only)
-- **AnalyzeCallGraph**: Statistics on nodes, edges, depth, types
-- **WebSocket Debugging**: Full TPDAPI integration for statement/exception breakpoints
+| What | Keeps | Strips | Typical ratio |
+|------|-------|--------|:-------------:|
+| **Class** | `CLASS DEFINITION` + `PUBLIC SECTION` | Protected, Private, Implementation | **7–30x** |
+| **Interface** | Full `INTERFACE...ENDINTERFACE` | — | 1x (already compact) |
+| **Function Module** | `FUNCTION` line + `*"` signature block | Body | **5–15x** |
 
-**v2.12.5** - EditSource Line Ending Fix
-- **CRLF→LF Normalization**: EditSource now works reliably across platforms
-- SAP ADT returns `\r\n`, AI sends `\n` - now automatically normalized
-- No more "old_string not found" errors due to line ending mismatches
+**Real-world example** — `ZCL_ABAPGIT_ADT_LINK` (abapGit codebase):
+- 8 dependencies detected → 8 resolved, 0 failed
+- Dependencies include: `ZIF_ABAPGIT_DEFINITIONS` (massive interface), `ZCX_ABAPGIT_EXCEPTION`, `CL_WB_OBJECT` (14 methods), `IF_ADT_URI_MAPPER` (8 methods), etc.
+- All compressed to **public signatures only** — no implementation bodies, no private sections
 
-**v2.12.4** - Feature Detection & Safety Network
-- **GetFeatures Tool**: Probe SAP system for available optional capabilities
-- **Feature Flags**: `--feature-abapgit`, `--feature-rap`, `--feature-amdp`, `--feature-ui5`, `--feature-transport`
-- **Feature Modes**: `auto` (probe system), `on` (force enable), `off` (force disable)
-- **SRVB WriteSource**: Create Service Bindings via unified WriteSource tool
-- **BDEF Improvements**: Fixed behavior definition creation flow
+### Method-Level Surgery — Read and Edit Individual Methods
 
-**v2.12.0** - abapGit-Compatible Format & Batch Operations
-- **Class Includes**: Import/export `.clas.testclasses.abap`, `.clas.locals_def.abap`, `.clas.locals_imp.abap`
-- **Batch Import DSL**: `dsl.Import(client).FromDirectory("./src/").RAPOrder().Execute(ctx)`
-- **Batch Export DSL**: `dsl.Export(client).Classes("ZCL_*").ToDirectory("./backup/").Execute(ctx)`
-- **Pipeline Builder**: `dsl.RAPPipeline(client, "./src/", "$PKG", "ZSRV_BINDING")` - full RAP deployment
-- **Priority Control**: `DDLSFirst()`, `RAPOrder()`, `CustomOrder()` for dependency handling
+Why pull an entire 1000-line class when you only need one 30-line method?
 
-**v2.11.0** - Transport Management & Safety Controls
-- **5 Transport Tools**: ListTransports, GetTransport, CreateTransport, ReleaseTransport, DeleteTransport
-- **Safety Controls**: `--enable-transports`, `--allowed-transports "A4HK*"`, `--allowed-packages "Z*"`
-- **Tool Group "C"**: Disable all CTS tools with `--disabled-groups C`
-- Enterprise-grade transport governance for AI assistants
-- See also v2.24.0 for `--allow-transportable-edits` safety feature
+```
+# Read just the FACTORIAL method — not the whole class
+SAP(action="read", target="CLAS ZCL_CALCULATOR", params={"method": "FACTORIAL"})
 
-**v2.10.0** - UI5/BSP Management & Tool Groups
-- **7 UI5/BSP Tools**: List apps, read files, search content, view manifests
-- **AMDP Debugger**: 5 tools for HANA stored procedure debugging
-- **Tool Groups**: Selectively disable features (`--disabled-groups 5THD`)
-- **127 Total Tools**: 90 focused mode, 127 expert mode
+# Edit just that method — vsp handles the rest
+SAP(action="edit", target="CLAS ZCL_CALCULATOR", params={
+  "method": "FACTORIAL",
+  "source": "  METHOD factorial.\n    ...\n  ENDMETHOD."
+})
+```
 
-**v2.8.0** - Full Debug Session Support
-- **DebuggerAttach/Detach** - Attach to caught debuggees, release sessions
-- **DebuggerGetStack** - View call stack with program/line info
-- **DebuggerGetVariables** - Inspect variable values during debugging
-- **DebuggerStep** - Step into/over/return/continue through code
-- Complete AI-powered debugging: breakpoint → listen → attach → inspect → step
+**What happens under the hood on edit:**
 
-**v2.7.0** - External Debugger & Listener
-- Set external breakpoints (line, exception, statement, message)
-- Long-polling debug listener for autonomous debugging
-- Foundation for AI-powered debugger scripting
+```mermaid
+sequenceDiagram
+    participant LLM as AI Agent
+    participant VSP as vsp
+    participant SAP as SAP System
 
-**v2.6.0** - RAP OData E2E Support
-- Create CDS views, Service Definitions, and Service Bindings
-- Publish OData V2/V4 services directly from AI assistant
-- Full RAP development lifecycle via MCP tools
+    LLM->>VSP: SAP(edit, CLAS ZCL_FOO, method=BAR, source=...)
+    VSP->>SAP: GetClassMethods() → find BAR boundaries
+    VSP->>SAP: GetClassSource() → full class
+    Note over VSP: Replace lines 42-58<br/>with new METHOD block
+    VSP->>SAP: SyntaxCheck(full reconstructed source)
+    VSP->>SAP: Lock → UpdateSource → Unlock → Activate
+    VSP->>LLM: ✓ Method BAR updated, class activated
+```
 
----
+The AI only sends/receives the method block (~30 lines). vsp fetches the full class internally, splices in the new method at the right line range, validates, and pushes back. **95% token reduction** vs full-class round-trips.
 
-**Single binary** with **90 focused tools** (default) or **127 expert tools** for AI-assisted ABAP development.
+**Context compression scopes to the method too** — when reading a single method, dependency analysis runs on _that method's code only_, so the prologue contains exactly the types and interfaces relevant to the method you're working on, not the entire class's dependency tree.
+
+| Operation | Tokens (full class) | Tokens (method-level) | Savings |
+|-----------|:-------------------:|:---------------------:|:-------:|
+| Read source | ~1,000 | ~50 | **20x** |
+| Read + context | ~1,600 | ~250 | **6x** |
+| Edit round-trip | ~2,000 | ~100 | **20x** |
+
+> *Built-in ABAP parser based on [abaplint](https://github.com/abaplint/abaplint) by [Lars Hvam](https://github.com/larshp) — the same parser that powers abaplint's 392 ABAP statement types.*
+
+### Native Go ABAP Lexer — abaplint in Go
+
+The [abaplint](https://github.com/abaplint/abaplint) lexer has been mechanically ported from TypeScript to native Go (`pkg/abaplint`). This is the same lexer that powers abaplint — 48 token types, all 6 lexer modes (normal, string, backtick, template, comment, pragma), with full whitespace-context encoding.
+
+**Verified via oracle-based differential testing** against the real TypeScript abaplint:
+
+```
+=== DIFFERENTIAL KPI ===
+Files:   29/29 passed (100.0%)
+Tokens:  22,612 total
+  Full match:  22,612 (100.0%)  — str + type + row + col
+  Str match:   22,612 (100.0%)
+  Type match:  22,612 (100.0%)
+  Pos match:   22,612 (100.0%)
+```
+
+Zero dependencies, zero FFI. Pure Go, ~3.5M tokens/sec, ready for lint rules in Phase 2.
+
+### ABAP LSP — Real-Time Diagnostics
+
+`vsp lsp --stdio` gives Claude Code (and other editors) **automatic** error detection and navigation for ABAP files. No explicit tool calls — the LSP pushes diagnostics on every save and compressed dependency context on file open.
+
+See [LSP setup](#abap-lsp-for-claude-code) for configuration.
+
+### WASM-to-ABAP Compiler — Run Any Language on SAP
+
+Compile WebAssembly binaries to native ABAP. Three paths, one goal:
+
+```
+.wasm binary → pkg/wasmcomp (Go)  → ABAP source files     ← AOT compiler
+.ts source   → pkg/ts2abap (Go)   → clean OO ABAP classes  ← direct transpiler
+.wasm binary → zcl_wasm_compiler  → ABAP (on SAP itself!)  ← self-hosting, 785 lines
+```
+
+**Proven on SAP A4H:** QuickJS (1,410 functions) compiled to 101K lines ABAP. abaplint parser (26.5MB) compiled to 396K lines. Self-hosting compiler parses WASM, generates ABAP, and executes via `GENERATE SUBROUTINE POOL` — all within SAP.
+
+| What | Size | Status |
+|------|:----:|:------:|
+| QuickJS → ABAP | 101K lines | Compiled |
+| abaplint → ABAP | 396K lines | Compiled |
+| abaplint lexer (TS→ABAP) | 495 lines | Running on SAP |
+| Self-hosting compiler | 785 lines | Running on SAP |
+| Batch deploy | `vsp deploy *.clas.abap` | 40 classes, 0 failures |
+
+> *Branch: `feat/wasm-abap`. See [reports/2026-03-20-001](reports/2026-03-20-001-wasm-abap-achievement.md) for full details.*
+
+### Full CLI Toolchain — SAP from the Terminal
+
+28 commands. No SAP GUI, no Eclipse, no IDE. Most work with standard ADT; `lint`/`parse`/`compile` work fully offline.
+
+```bash
+vsp query T000 --top 5                           # query tables
+vsp grep "SELECT.*mara" --package '$TMP'          # search source code
+vsp graph CLAS ZCL_FOO --direction callers        # who uses this class?
+vsp deps '$ZFINANCE' --format summary             # transport readiness check
+vsp lint --file myclass.clas.abap                 # offline ABAP linter
+vsp compile wasm program.wasm --class ZCL_DEMO    # WASM→ABAP compiler
+vsp parse --stdin --format json < source.abap     # ABAP parser
+vsp context CLAS ZCL_FOO --depth 2                # compressed deps (2 levels)
+vsp system info                                   # system version + ZADT_VSP check
+```
+
+`graph` and `deps` use WBCROSSGT/CROSS tables as fallback when ADT call graph API is unavailable — works on any SAP system with ADT.
+
+See **[CLI Guide](docs/cli-guide.md)** for the complete reference with feature requirements matrix.
+
+### Other Highlights
+- **Lua Scripting Engine**: `vsp lua` — interactive REPL + scripts with 50+ SAP bindings. Query tables, lint code, parse ABAP, debug with breakpoints, record execution, replay state. See [example scripts](examples/scripts/).
+- **YAML Workflows**: `vsp workflow run pipeline.yaml` — CI/CD automation with variable substitution, step chaining, and error handling. See [example workflows](examples/workflows/).
+- **Bootstrap from CLI**: `vsp install abapgit` + `vsp install zadt-vsp` — deploy dependencies to SAP systems directly from the command line. No SAP GUI needed.
 
 ## Key Features
 
 | Feature | Description |
 |---------|-------------|
+| **Hyperfocused Mode** | `--mode hyperfocused`: 1 universal SAP tool, **~200 tokens** vs ~40K for 122 |
+| **Context Compression** | Auto-compressed dependency contracts — 7–30x compression, built-in ABAP parser |
+| **ABAP LSP** | Built-in Language Server — real-time diagnostics, go-to-definition, context push |
 | **AI Debugger** | Breakpoints, listener, attach, step, inspect stack & variables |
 | **RAP OData E2E** | Create CDS views, Service Definitions, Bindings → Publish OData services |
-| **Focused Mode** | 89 curated tools optimized for AI assistants (30% token reduction) |
+| **Focused Mode** | 81 curated tools optimized for AI assistants |
 | **AI-Powered RCA** | Root cause analysis with dumps, traces, profiler + code intelligence |
 | **DSL & Workflows** | Fluent Go API + YAML automation for CI/CD pipelines |
 | **ExecuteABAP** | Run arbitrary ABAP code via unit test wrapper |
@@ -205,31 +202,6 @@
 | **Diagnostics** | Short dumps (RABAX), ABAP profiler (ATRA), SQL traces (ST05) |
 | **File Deployment** | Bypass token limits - deploy large files directly from filesystem |
 | **Surgical Edits** | `EditSource` tool matches Claude's Edit pattern for precise changes |
-
-## Specialized Agents
-
-**6 high-level agents** that orchestrate multiple MCP tools for complex workflows:
-
-| Agent | Purpose | Use Case |
-|-------|---------|----------|
-| **Code Generator** (`/code-gen`) | Generate ABAP objects from natural language | Create classes, programs, interfaces, CDS views, tables |
-| **Debug Orchestrator** (`/debug-orchestrator`) | Autonomous debugging & RCA | Investigate crashes, analyze performance, live debugging |
-| **Test Generator** (`/test-gen`) | Create comprehensive unit test coverage | Generate test classes with positive/negative/edge case tests |
-| **Code Quality Guardian** (`/code-quality`) | Ensure code quality & compliance | Security audits, performance optimization, ATC checks |
-| **Documentation Generator** (`/doc-gen`) | Create technical documentation | README files, API references, UML diagrams, architecture guides |
-| **Transport & Deployment Manager** (`/transport-deploy`) | Manage deployments with validation | Pre-deployment checks, dependency ordering, rollback plans |
-
-**Quick Examples**:
-```
-/code-gen "Create a class ZCL_ORDER_VALIDATOR with method CHECK_ORDER"
-/debug-orchestrator "Investigate ZERODIVIDE crash in ZCL_PRICING"
-/test-gen "Generate unit tests for ZCL_ORDER_PROCESSOR with 80% coverage"
-/code-quality "Run security audit on $ZPROD package"
-/doc-gen "Generate complete documentation for $ZAPI package"
-/transport-deploy "Prepare $ZRAY package for production deployment"
-```
-
-See [docs/AGENTS.md](docs/AGENTS.md) for complete agent documentation and workflows.
 
 ## Quick Start
 
@@ -243,6 +215,23 @@ git clone https://github.com/oisee/vibing-steampunk.git && cd vibing-steampunk
 make build
 ```
 
+## CLI Coding Agents
+
+VSP works with **8 CLI coding agents** — not just Claude! Full setup guides with config templates:
+
+| Agent | LLM | Free? | Config |
+|-------|-----|-------|--------|
+| **Gemini CLI** | Gemini 2.5 Pro/Flash | Yes (1000 req/day) | `.gemini/settings.json` |
+| **Claude Code** | Claude Opus/Sonnet 4.6 | No ($20+/mo) | `.mcp.json` |
+| **GitHub Copilot** | Claude, GPT-5, Gemini | No ($10+/mo) | `.copilot/mcp-config.json` |
+| **OpenAI Codex** | GPT-5-Codex, GPT-4.1 | No ($20+/mo) | `.mcp.json` |
+| **Qwen Code** | Qwen3-Coder | Yes (1000 req/day) | `.qwen/settings.json` |
+| **OpenCode** | 75+ models (BYOK) | Yes (own key) | `opencode.json` |
+| **Goose** | 75+ providers (BYOK) | Yes (own key) | `~/.config/goose/config.yaml` |
+| **Mistral Vibe** | Devstral 2, local models | Yes (Ollama) | `.vibe/config.toml` |
+
+**[Full setup guide with config examples](docs/cli-agents/README.md)** | [Русский](docs/cli-agents/README_RU.md) | [Українська](docs/cli-agents/README_UA.md) | [Español](docs/cli-agents/README_ES.md)
+
 ## CLI Mode
 
 vsp works in two modes:
@@ -252,26 +241,43 @@ vsp works in two modes:
 ### CLI Commands
 
 ```bash
-# Search for ABAP objects
+# Source operations
+vsp -s a4h source CLAS ZCL_MY_CLASS              # read source
+vsp -s a4h source read CLAS ZCL_MY_CLASS          # same, explicit
+vsp -s a4h source write CLAS ZCL_FOO < file.abap  # write from stdin
+vsp -s a4h source edit CLAS ZCL_FOO --old "X" --new "Y"  # surgical edit
+vsp -s a4h source context CLAS ZCL_FOO            # source + dependency contracts
+vsp -s a4h context CLAS ZCL_FOO                   # shortcut for above
+
+# Search
 vsp -s a4h search "ZCL_*"
 vsp -s dev search "Z*ORDER*" --type CLAS --max 50
 
-# Get source code
-vsp -s a4h source CLAS ZCL_MY_CLASS
-vsp -s dev source PROG ZTEST_PROGRAM
+# Testing & code quality
+vsp -s a4h test CLAS ZCL_MY_CLASS                 # run unit tests
+vsp -s a4h test --package '$TMP'                  # package-level tests
+vsp -s a4h atc CLAS ZCL_MY_CLASS                  # ATC code check
 
-# Export packages to ZIP (abapGit format)
-vsp -s a4h export '$ZORK' '$ZLLM' -o packages.zip
-vsp -s dev export '$TMP' --subpackages
+# Deployment
+vsp -s a4h deploy zcl_test.clas.abap '$TMP'       # deploy file to SAP
+vsp -s a4h export '$ZORK' '$ZLLM' -o packages.zip # export abapGit ZIP
 
-# List configured systems
-vsp systems
+# Bootstrap SAP system (no SAP GUI needed)
+vsp -s a4h install abapgit                        # install abapGit
+vsp -s a4h install zadt-vsp                       # install ZADT_VSP handler
+vsp -s a4h install abapgit --edition full         # full dev edition (576 objects)
+vsp -s a4h install list                           # show installable components
 
-# Configuration management
-vsp config init          # Create example configs
-vsp config show          # Show effective configuration
-vsp config mcp-to-vsp    # Import from .mcp.json to .vsp.json
-vsp config vsp-to-mcp    # Export from .vsp.json to .mcp.json
+# Transport management
+vsp -s a4h transport list                         # list transports
+vsp -s a4h transport get A4HK900094               # transport details
+
+# System management
+vsp systems                                       # list configured systems
+vsp config init                                   # create example configs
+
+# Start ABAP LSP server (for Claude Code / editors)
+vsp lsp --stdio
 ```
 
 ### System Profiles (`.vsp.json`)
@@ -321,7 +327,8 @@ Configure multiple SAP systems in `.vsp.json`:
 ```bash
 vsp --url https://host:44300 --user admin --password secret
 vsp --url https://host:44300 --cookie-file cookies.txt
-vsp --mode expert  # Enable all 126 tools
+vsp --mode expert          # Enable all 122 tools
+vsp --mode hyperfocused    # Single SAP tool (~200 tokens instead of ~40K)
 ```
 
 ### Environment Variables
@@ -349,7 +356,6 @@ SAP_PASSWORD=secret
 | `--mode` | `SAP_MODE` | `focused` (default) or `expert` |
 | `--cookie-file` | `SAP_COOKIE_FILE` | Netscape cookie file |
 | `--insecure` | `SAP_INSECURE` | Skip TLS verification |
-| `--timeout` | `SAP_TIMEOUT` | HTTP request timeout (e.g., `120s`, `5m`, `0` = no timeout; default: 60s) |
 | `--terminal-id` | `SAP_TERMINAL_ID` | SAP GUI terminal ID for cross-tool debugging |
 | `--allow-transportable-edits` | `SAP_ALLOW_TRANSPORTABLE_EDITS` | Enable editing transportable objects |
 | `--allowed-transports` | `SAP_ALLOWED_TRANSPORTS` | Whitelist transports (wildcards: `A4HK*`) |
@@ -397,6 +403,51 @@ Add `.mcp.json` to your project:
 }
 ```
 
+### ABAP LSP for Claude Code
+
+vsp includes a built-in LSP server that gives Claude Code **automatic** error detection when editing ABAP files — no explicit tool calls needed.
+
+**Add to Claude Code settings** (`.claude/settings.json` or global settings):
+
+```json
+{
+  "lsp": {
+    "abap": {
+      "command": "vsp",
+      "args": ["lsp", "--stdio"],
+      "extensionToLanguage": {
+        ".abap": "abap",
+        ".asddls": "abap",
+        ".asbdef": "abap"
+      }
+    }
+  }
+}
+```
+
+SAP credentials are resolved from environment variables or `.env` file — same as MCP mode.
+
+**Supported LSP features:**
+
+| Feature | Method | Source |
+|---------|--------|--------|
+| Real-time syntax errors | `textDocument/publishDiagnostics` | ADT SyntaxCheck |
+| Go-to-definition | `textDocument/definition` | ADT FindDefinition |
+
+**Supported file patterns** (abapGit naming convention):
+
+| Extension | Object Type |
+|-----------|-------------|
+| `.clas.abap` | Class (main source) |
+| `.clas.testclasses.abap` | Class test includes |
+| `.clas.locals_def.abap` | Class local definitions |
+| `.prog.abap` | Program / Report |
+| `.intf.abap` | Interface |
+| `.fugr.abap` | Function Group |
+| `.ddls.asddls` | CDS View |
+
+Namespace convention (`#dmo#cl_flight.clas.abap` → `/DMO/CL_FLIGHT`) is handled automatically.
+
 ### Transportable Packages Configuration
 
 To work with transportable packages (non-`$` prefixed), you **must** explicitly enable transport support:
@@ -440,18 +491,33 @@ CreatePackage(
 
 Without these flags, operations on transportable packages will be blocked by the safety system.
 
-## Focused vs Expert Mode
+## Tool Modes
 
-| Aspect | Focused (Default) | Expert |
-|--------|-------------------|--------|
-| **Tools** | 89 essential | 126 complete |
-| **Token overhead** | ~5,000 | ~10,000 |
-| **Use case** | Daily development | Edge cases, debugging |
-| **Unified tools** | GetSource, WriteSource | + granular Get*/Write* |
+One axis, three values — `--mode` or `SAP_MODE`:
 
-**Focused mode** consolidates 11 read/write tools into 2 unified tools, reducing cognitive load and token usage by ~30%.
+```mermaid
+graph LR
+    F["focused<br/>81 tools<br/>~14K tokens<br/><i>default</i>"] --> E["expert<br/>122 tools<br/>~40K tokens"]
+    E --> H["hyperfocused<br/>1 tool<br/>~200 tokens"]
+    style H fill:#2d6a4f,color:#fff
+    style F fill:#264653,color:#fff
+    style E fill:#264653,color:#fff
+```
 
-Enable expert mode: `--mode=expert` or `SAP_MODE=expert`
+| Aspect | Focused (default) | Expert | Hyperfocused |
+|--------|:-:|:-:|:-:|
+| **Tools** | 81 essential | 122 complete | 1 universal `SAP()` |
+| **Schema tokens** | ~14K | ~40K | ~200 |
+| **How AI calls it** | `GetSource(type, name)` | Same, + granular tools | `SAP(action, target, params)` |
+| **Documentation** | In tool schemas | In tool schemas | `SAP(action="help")` |
+| **Best for** | Large-context agents | Edge cases, debugging | Local models, fast iteration |
+| **Safety controls** | All apply | All apply | All apply (same code path) |
+
+```bash
+vsp --mode focused       # default — 81 curated tools
+vsp --mode expert        # all 122 tools individually
+vsp --mode hyperfocused  # single SAP(action, target, params) tool
+```
 
 ## DSL & Automation
 
@@ -666,25 +732,21 @@ See [AI-Powered RCA Workflows](reports/2025-12-05-013-ai-powered-rca-workflows.m
 
 ## Tools Reference
 
-**90 Focused Mode Tools** (see full list below):
-- **Search:** SearchObject, SourceSearch, GrepObjects, GrepPackages
-- **Read:** GetSource, GetTable, GetTableContents, RunQuery, GetPackage, GetFunctionGroup, GetCDSDependencies, GetMessages
-- **Write:** WriteSource, EditSource, CreateObject, DeleteObject, RenameObject, ImportFromFile, ExportToFile, MoveObject
-- **Dev:** SyntaxCheck, RunUnitTests, RunATCCheck, RunATCCheckTransport, Activate, ActivatePackage, PrettyPrint, GetInactiveObjects, CreatePackage, CreateTable, CompareSource, CloneObject, GetClassInfo, LockObject, UnlockObject
-- **Version History:** GetRevisions, GetRevisionSource, CompareVersions
-- **Intelligence:** FindDefinition, FindReferences, ExecuteABAP, GetAbapHelp, GetFeatures
-- **Code Analysis:** GetCallGraph, GetObjectStructure, GetCallersOf, GetCalleesOf, AnalyzeCallGraph, CompareCallGraphs, TraceExecution
-- **Debugger:** SetBreakpoint, GetBreakpoints, DeleteBreakpoint, DebuggerListen, DebuggerAttach, DebuggerDetach, DebuggerStep, DebuggerGetStack, DebuggerGetVariables, CallRFC
-- **AMDP Debugger:** AMDPDebuggerStart, AMDPDebuggerResume, AMDPDebuggerStop, AMDPDebuggerStep, AMDPGetVariables, AMDPSetBreakpoint, AMDPGetBreakpoints
-- **System:** GetSystemInfo, GetInstalledComponents
-- **Diagnostics:** ListDumps, GetDump, ListTraces, GetTrace, GetSQLTraceState, ListSQLTraces
-- **Transport:** ListTransports, GetTransport
+**52 Focused Mode Tools:**
+- **Search:** SearchObject, GrepObjects, GrepPackages
+- **Read:** GetSource, GetTable, GetTableContents, RunQuery, GetPackage, GetFunctionGroup, GetCDSDependencies
+- **Debugger:** DebuggerListen, DebuggerAttach, DebuggerDetach, DebuggerStep, DebuggerGetStack, DebuggerGetVariables
+  - *Note: Breakpoints now managed via WebSocket (ZADT_VSP)*
+- **Write:** WriteSource, EditSource, ImportFromFile, ExportToFile, MoveObject
+- **Dev:** SyntaxCheck, RunUnitTests, RunATCCheck, LockObject, UnlockObject
+- **Intelligence:** FindDefinition, FindReferences, GetContext
+- **System:** GetSystemInfo, GetInstalledComponents, GetCallGraph, GetObjectStructure, GetFeatures
+- **Diagnostics:** GetDumps, GetDump, ListTraces, GetTrace, GetSQLTraceState, ListSQLTraces
 - **Git:** GitTypes, GitExport (requires abapGit on SAP)
-- **UI5/BSP:** UI5ListApps, UI5GetApp, UI5GetFileContent
-- **Reports:** RunReport, RunReportAsync, GetAsyncResult, GetVariants, GetTextElements, SetTextElements
-- **Install:** InstallZADTVSP, InstallAbapGit, ListDependencies, InstallDummyTest
+- **Reports:** RunReport, GetVariants, GetTextElements, SetTextElements
+- **Install:** InstallZADTVSP, InstallAbapGit, ListDependencies
 
-See [README_TOOLS.md](README_TOOLS.md) for complete tool documentation (127 tools).
+See [README_TOOLS.md](README_TOOLS.md) for complete tool documentation (122 tools).
 
 <details>
 <summary><strong>Capability Matrix</strong></summary>
@@ -709,8 +771,7 @@ See [README_TOOLS.md](README_TOOLS.md) for complete tool documentation (127 tool
 | RAP OData (DDLS/SRVD/SRVB) | Y | - | **Y** |
 | OData Service Publish | Y | - | **Y** |
 | abapGit Export | Y | - | **Y** (WebSocket) |
-| Version History | Y | Y | **Y** |
-| Debugging | Y | Y | **Y** (WebSocket) |
+| Debugging | Y | Y | N |
 
 </details>
 
@@ -723,7 +784,7 @@ See [README_TOOLS.md](README_TOOLS.md) for complete tool documentation (127 tool
 
 **vsp** is a Go rewrite with:
 - Single binary, zero dependencies
-- 126 tools (vs 13 original)
+- 62 tools (vs 13 original)
 - ~50x faster startup
 
 ## Optional: WebSocket Handler (ZADT_VSP)
@@ -757,12 +818,14 @@ See [WebSocket Handler Report](reports/2025-12-18-002-websocket-rfc-handler.md) 
 
 | Document | Description |
 |----------|-------------|
-| [README_TOOLS.md](README_TOOLS.md) | Complete tool reference (126 tools) |
+| [docs/architecture.md](docs/architecture.md) | Architecture diagrams (Mermaid) |
+| [README_TOOLS.md](README_TOOLS.md) | Complete tool reference (94 tools) |
 | [MCP_USAGE.md](MCP_USAGE.md) | AI agent usage guide |
 | [docs/DSL.md](docs/DSL.md) | DSL & workflow documentation |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Technical architecture |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Technical architecture (detailed) |
 | [CLAUDE.md](CLAUDE.md) | AI development guidelines |
 | [embedded/abap/README.md](embedded/abap/README.md) | WebSocket handler deployment |
+| [docs/cli-agents/](docs/cli-agents/README.md) | CLI coding agents setup guide (8 agents, 4 languages) |
 | [Roadmap: Quick/Mid/Far Wins](reports/2026-01-02-005-roadmap-quick-mid-far-wins.md) | Prioritized feature backlog |
 | [Observations Since v2.12.5](reports/2025-12-22-observations-since-v2.12.5.md) | Recent changes & research summary |
 
@@ -788,8 +851,8 @@ make build          # Current platform
 make build-all      # All 9 platforms
 
 # Test
-go test ./...                              # Unit tests (238)
-go test -tags=integration -v ./pkg/adt/    # Integration tests (56)
+go test ./...                              # Unit tests (249)
+go test -tags=integration -v ./pkg/adt/    # Integration tests (21+)
 ```
 
 <details>
@@ -805,7 +868,8 @@ vibing-steampunk/
 │   ├── codeintel.go          # Definition, refs, completion
 │   ├── workflows.go          # High-level workflows
 │   └── http.go               # HTTP transport (CSRF, auth)
-├── internal/mcp/server.go    # MCP tool handlers (126 tools)
+├── internal/mcp/server.go    # MCP tool handlers (62 tools)
+├── internal/lsp/             # ABAP LSP server (diagnostics, go-to-def)
 └── pkg/dsl/                  # DSL & workflow engine
 ```
 
@@ -815,8 +879,8 @@ vibing-steampunk/
 
 | Metric | Value |
 |--------|-------|
-| **Tools** | 127 (90 focused, 127 expert) |
-| **Unit Tests** | 238 |
+| **Tools** | 122 (81 focused, 122 expert) |
+| **Unit Tests** | 270+ |
 | **Platforms** | 9 (Linux, macOS, Windows × amd64/arm64/386) |
 
 <details>
@@ -843,15 +907,6 @@ vibing-steampunk/
 - [x] **Lua Scripting** - REPL, 40+ bindings, debug session management (v2.14.0)
 - [x] **WebSocket Debugging** - ZADT_VSP handler, TPDAPI integration (v2.15.0)
 - [x] **Force Replay** - Variable history, state injection (v2.15.0)
-- [x] **Transport Management** - 5 tools with safety controls, SQL fallback (v2.11.0)
-- [x] **Transportable Edits** - `--allow-transportable-edits` safety flag (v2.24.0)
-- [x] **Version History** - GetRevisions, GetRevisionSource, CompareVersions (v2.26.1)
-- [x] **SourceSearch** - HANA fulltext search via SRIS (v2.26.1)
-- [x] **Method-Level Ops** - GetSource/EditSource/WriteSource with `method` param (v2.21.0)
-- [x] **CLI Mode** - `vsp search`, `vsp source`, `vsp export`, multi-system config (v2.20.0)
-- [x] **Install Tools** - InstallZADTVSP, InstallAbapGit, ListDependencies (v2.17.0)
-- [x] **Report Execution** - RunReport, RunReportAsync, GetVariants (v2.18.0)
-- [x] **GetAbapHelp** - ABAP keyword docs, Level 2 via ZADT_VSP WebSocket (v2.22.0)
 
 ### Parked (Needs Further Work)
 - [ ] **AMDP Debugger** - Experimental: Session works, breakpoint triggering under investigation ([Report](reports/2025-12-22-001-amdp-debugging-investigation.md))
@@ -1060,18 +1115,6 @@ AI Workflow:
 - [ROADMAP.md](ROADMAP.md) - Detailed implementation plan
 - [TAS & Scripting Report](reports/2025-12-21-001-tas-scripting-time-travel-vision.md) - Full technical design
 - [Test Extraction Report](reports/2025-12-21-002-test-extraction-isolated-replay.md) - Playground architecture
-
-## Related Projects
-
-Part of the [claude-team-control](https://gitlab.kofax.com/sap-ai/mcp/claude-team-control) ecosystem:
-
-| Project | Description |
-|---------|-------------|
-| [claude-team-control](https://gitlab.kofax.com/sap-ai/mcp/claude-team-control) | Central AI config, orchestrator, sync |
-| [pdap-hub](https://gitlab.kofax.com/sap-ai/mcp/pdap-hub) | Process Director web dashboard |
-| [pdap-rag-mcp](https://gitlab.kofax.com/sap-ai/mcp/pdap-rag-mcp) | RAG search over PD documentation |
-| [vibing-steampunk](https://gitlab.kofax.com/sap-ai/mcp/vibing-steampunk-mcp) | SAP ADT tools (Go/ABAP) |
-| [sap-gui-control](https://gitlab.kofax.com/sap-ai/mcp/sap-gui-control) | SAP GUI automation via COM |
 
 ## License
 

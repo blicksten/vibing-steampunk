@@ -2,187 +2,9 @@
 
 This file provides context for AI assistants (Claude, etc.) working on this project.
 
-## Requirements
-
-Never hallucinate or fabricate information. If you're unsure about anything, you MUST explicitly state your uncertainty. Say "I don't know" rather that questing or making assumptions. Honesty about limitations is required.
-
-## Connected MCP Servers Usage Guide
-
-This project leverages multiple MCP servers for comprehensive development capabilities. Use them strategically:
-
-### 1. VSP-SC3 (SAP ABAP Development Tools)
-
-**Primary Purpose:** SAP ABAP development, debugging, testing, and system analysis
-
-**When to Use:**
-- Reading/writing ABAP code (GetSource, WriteSource, EditSource)
-- Creating SAP objects (classes, programs, tables, CDS views)
-- Running unit tests, ATC checks, syntax validation
-- Debugging ABAP code (SetBreakpoint, DebuggerListen, DebuggerAttach)
-- Analyzing code structure (GetCallGraph, FindDefinition, FindReferences)
-- Transport management (ListTransports, GetTransport)
-- Runtime analysis (ListTraces, GetTrace, ListDumps, GetDump)
-- Database queries (GetTable, GetTableContents, RunQuery)
-- abapGit operations (GitExport, GitTypes, InstallAbapGit)
-
-**Key Tools by Category:**
-- **Read:** GetSource, GetClassInfo, GetTable, SearchObject
-- **Search:** SourceSearch (HANA fulltext), GrepObjects, GrepPackages
-- **Write:** WriteSource, EditSource, CreateTable
-- **Test:** RunUnitTests, RunATCCheck, RunATCCheckTransport, SyntaxCheck
-- **Debug:** SetBreakpoint, DebuggerListen, DebuggerAttach, AMDPDebuggerStart
-- **Analysis:** GetCallGraph, GetCalleesOf, GetCallersOf, FindReferences
-- **Deploy:** Activate, ActivatePackage, MoveObject, InstallZADTVSP
-
-**Best Practices:**
-- Always use GetSource before EditSource to understand context
-- Use EditSource (surgical string replacement) instead of full WriteSource when possible
-- Run SyntaxCheck before Activate
-- Use method parameter for method-level operations (95% token reduction)
-- Leverage specialized agents (/code-gen, /debug-orchestrator, /test-gen) for complex workflows
-- Use safety controls in production (SAP_READ_ONLY, SAP_ALLOWED_PACKAGES)
-
-**Example Workflow:**
-```
-1. SearchObject to find classes
-2. GetSource to read code
-3. EditSource to make changes
-4. SyntaxCheck to validate
-5. Activate to deploy
-6. RunUnitTests to verify
-```
-
-### 2. Playwright (Browser Automation)
-
-**Primary Purpose:** Web browser automation and testing
-
-**When to Use:**
-- Testing web applications (UI5/Fiori apps, web frontends)
-- Automated browser interactions (navigation, clicks, form filling)
-- Visual regression testing (screenshots)
-- Web scraping and data extraction
-- Accessibility testing (browser_snapshot)
-- End-to-end testing workflows
-
-**Key Tools:**
-- **Navigation:** browser_navigate, browser_navigate_back, browser_tabs
-- **Interaction:** browser_click, browser_type, browser_fill_form, browser_select_option
-- **Analysis:** browser_snapshot, browser_take_screenshot, browser_console_messages
-- **Advanced:** browser_evaluate, browser_run_code, browser_wait_for
-
-**Best Practices:**
-- Use browser_snapshot instead of browser_take_screenshot for actions (more accessible)
-- Use browser_fill_form for multiple fields instead of individual browser_type calls
-- Always wait for elements with browser_wait_for before interaction
-- Handle dialogs with browser_handle_dialog
-- Use browser_console_messages to debug JavaScript errors
-- Prefer browser_run_code for complex Playwright sequences
-
-**Integration with VSP:**
-```
-VSP: Deploy UI5/Fiori app
-VSP: UI5GetApp to verify deployment
-Playwright: browser_navigate to app URL
-Playwright: browser_snapshot to analyze UI
-Playwright: browser_click/browser_type for interaction testing
-Playwright: browser_take_screenshot for visual verification
-```
-
-### 3. Context7 (Documentation & Code Examples)
-
-**Primary Purpose:** Retrieve up-to-date library documentation and code examples
-
-**When to Use:**
-- Learning new libraries or frameworks
-- Finding code examples for specific tasks
-- Understanding API usage patterns
-- Checking latest documentation (post-2025 updates)
-- Resolving "how do I" questions for third-party libraries
-
-**Key Tools:**
-- **resolve-library-id:** Convert library name to Context7 ID
-- **query-docs:** Query documentation with specific questions
-
-**Best Practices:**
-- ALWAYS call resolve-library-id first unless user provides exact library ID (/org/project)
-- Limit to 3 calls per question (avoid over-querying)
-- Include user's original question in query parameter for relevance ranking
-- Never include sensitive data (API keys, credentials) in queries
-- Use for third-party libraries, not internal SAP APIs (use VSP GetSource instead)
-
-**Example Usage:**
-```
-1. User asks: "How to implement JWT auth in Express.js?"
-2. resolve-library-id with libraryName="express.js" and user's question
-3. query-docs with returned libraryId and specific query
-4. Combine Context7 examples with VSP code generation
-```
-
-### Multi-MCP Integration Patterns
-
-**Pattern 1: Full-Stack SAP Development**
-```
-1. Context7: Get UI5 framework documentation
-2. VSP: Create UI5/BSP application (UI5GetApp, UI5GetFileContent)
-3. Playwright: Test deployed application
-4. VSP: Run ATC checks, activate, transport
-```
-
-**Pattern 2: Documentation-Driven Code Generation**
-```
-1. Context7: Query best practices for specific library
-2. VSP: Generate ABAP wrapper class using examples
-3. VSP: Create unit tests
-4. Playwright: Test web interface if applicable
-```
-
-**Pattern 3: Debugging & Root Cause Analysis**
-```
-1. VSP: ListDumps, GetDump to find runtime errors
-2. VSP: GetSource to read failing code
-3. Context7: Query solutions for error patterns
-4. VSP: EditSource to fix issue
-5. VSP: RunUnitTests to verify fix
-6. Playwright: End-to-end test if web-facing
-```
-
-**Pattern 4: Testing Pipeline**
-```
-1. VSP: RunUnitTests (ABAP unit tests)
-2. VSP: RunATCCheck (static code analysis)
-3. Playwright: browser_navigate + UI tests
-4. VSP: GetTrace for performance analysis
-5. VSP: Transport to quality system
-```
-
-### When NOT to Use MCP Servers
-
-**Don't use VSP for:**
-- Non-SAP development tasks
-- Questions about general programming (use Context7)
-- Browser automation (use Playwright)
-
-**Don't use Playwright for:**
-- SAP backend development
-- ABAP code analysis
-- Non-browser tasks
-
-**Don't use Context7 for:**
-- SAP-specific internal APIs (use VSP GetSource)
-- Questions you can answer from existing code
-- Queries that require system access
-
-### Performance Tips
-
-1. **Parallel Operations:** Run independent MCP calls simultaneously
-2. **Token Efficiency:** Use VSP method parameter for focused edits
-3. **Cache Awareness:** Context7 has 15-min cache, VSP can use SQLite cache
-4. **Batch Operations:** Use VSP batch tools (GrepPackages, ActivatePackage)
-5. **Agent Delegation:** Use specialized agents for multi-step workflows
-
 ## Project Overview
 
-**vsp** is a Go-native MCP (Model Context Protocol) server for SAP ABAP Development Tools (ADT). It provides a single-binary distribution with 98 essential tools (focused mode, default) or 133 complete tools (expert mode) for use with Claude and other MCP-compatible LLMs.
+**vsp** is a Go-native MCP (Model Context Protocol) server for SAP ABAP Development Tools (ADT). It provides a single-binary distribution with 81 essential tools (focused mode, default) or 122 complete tools (expert mode) for use with Claude and other MCP-compatible LLMs.
 
 ## Quick Reference
 
@@ -222,10 +44,9 @@ SAP_URL=http://host:50000 SAP_USER=user SAP_PASSWORD=pass ./vsp
 | `SAP_CLIENT` / `--client` | SAP client number (default: 001) |
 | `SAP_LANGUAGE` / `--language` | SAP language (default: EN) |
 | `SAP_INSECURE` / `--insecure` | Skip TLS verification (default: false) |
-| `SAP_TIMEOUT` / `--timeout` | HTTP request timeout (e.g., `120s`, `5m`, `0` = no timeout). Default: 60s |
 | `SAP_COOKIE_FILE` / `--cookie-file` | Path to Netscape-format cookie file |
 | `SAP_COOKIE_STRING` / `--cookie-string` | Cookie string (key1=val1; key2=val2) |
-| `SAP_MODE` / `--mode` | Tool mode: `focused` (20 tools, default) or `expert` (47 tools) |
+| `SAP_MODE` / `--mode` | Tool mode: `focused` (81 tools, default) or `expert` (122 tools) |
 | `SAP_DISABLED_GROUPS` / `--disabled-groups` | Disable tool groups: `5`/`U`=UI5, `T`=Tests, `H`=HANA, `D`=Debug |
 | `SAP_VERBOSE` / `--verbose` | Enable verbose logging to stderr |
 | **Safety Configuration** | |
@@ -242,47 +63,11 @@ SAP_URL=http://host:50000 SAP_USER=user SAP_PASSWORD=pass ./vsp
 | `SAP_FEATURE_UI5` / `--feature-ui5` | UI5/Fiori BSP management: auto, on, off (default: auto) |
 | `SAP_FEATURE_TRANSPORT` / `--feature-transport` | CTS transport management: auto, on, off (default: auto) |
 
-## Specialized Agents
-
-The project includes **6 specialized agents** (Claude Code skills) for complex workflows:
-
-| Agent | Invocation | Purpose |
-|-------|------------|---------|
-| **Code Generator** | `/code-gen` | Generate ABAP objects from natural language |
-| **Debug Orchestrator** | `/debug-orchestrator` | Autonomous debugging and root cause analysis |
-| **Test Generator** | `/test-gen` | Create comprehensive unit test coverage |
-| **Code Quality Guardian** | `/code-quality` | Code quality audits and security checks |
-| **Documentation Generator** | `/doc-gen` | Generate README, API docs, UML diagrams |
-| **Transport & Deployment** | `/transport-deploy` | Manage deployments with validation |
-
-**Agent Files**: [`.claude/commands/`](./.claude/commands/)
-
-**Complete Guide**: [docs/AGENTS.md](./docs/AGENTS.md)
-
-**When to Use Agents**:
-- Complex, multi-step workflows (create → test → deploy)
-- Need best practices applied automatically
-- Want comprehensive reports and tracking
-- Collaborative workflows (debug → fix → test)
-
-**Example Workflows**:
-```
-# Complete feature development
-/code-gen → /test-gen → /code-quality → /doc-gen → /transport-deploy
-
-# Bug fix workflow
-/debug-orchestrator → /code-gen → /test-gen → /transport-deploy
-
-# Code quality sprint
-/code-quality → /test-gen → /doc-gen
-```
-
 ## Codebase Structure
 
 ```
-cmd/vsp/main.go              # Entry point
-cmd/vsp/config_cmd.go        # Config subcommand (vsp config tools)
-internal/mcp/server.go       # MCP server (138 tools, mode-aware registration)
+cmd/vsp/main.go       # Entry point
+internal/mcp/server.go       # MCP server (122 tool handlers, mode-aware)
 pkg/
 ├── adt/
 │   ├── client.go             # ADT client + read operations
@@ -297,16 +82,6 @@ pkg/
 │   ├── safety.go             # Safety & protection configuration
 │   ├── safety_test.go        # Safety unit tests (25 tests)
 │   ├── features.go           # Feature detection (safety network)
-│   ├── help.go               # ABAP keyword documentation (GetAbapHelp)
-│   ├── revisions.go          # Object version history (GetRevisions, CompareVersions)
-│   ├── refactoring.go        # ADT-native refactoring (Rename, Extract Method)
-│   ├── quickfix.go           # Quick Fix proposals + ATC Quick Fix
-│   ├── testing.go            # Code coverage, SQL explain, check run results
-│   ├── cds_tools.go          # CDS impact analysis + element info
-│   ├── codeanalysis.go       # Intelligence Layer: ABAP code analysis (21 rules, statement assembler)
-│   ├── sqlperf.go            # Intelligence Layer: SQL performance analysis (plan + text)
-│   ├── impact.go             # Intelligence Layer: Impact analysis (4-layer composition)
-│   ├── regression.go         # Intelligence Layer: Regression detection (signature/method/interface changes)
 │   ├── http.go               # HTTP transport (CSRF, sessions)
 │   ├── config.go             # Configuration
 │   ├── cookies.go            # Cookie file parsing (Netscape format)
@@ -325,9 +100,20 @@ pkg/
 │   ├── bindings.go           # ADT tool bindings for Lua
 │   └── helpers.go            # Lua<->Go value conversion
 │
-├── config/                   # Multi-system configuration
-│   ├── systems.go            # .vsp.json tool visibility config
-│   └── systems_test.go       # Unit tests
+├── abaplint/                 # Native Go port of abaplint lexer
+│   ├── lexer.go              # Lexer (mechanical port from TS), 48 token types
+│   ├── lexer_test.go         # Unit tests + oracle differential (29 files, 22K tokens)
+│   └── testdata/
+│       ├── oracle.js          # Node.js oracle using @abaplint/core
+│       └── oracle_fixtures.json # Oracle reference data
+│
+├── llvm2abap/                # LLVM IR → ABAP compiler (v2.33)
+│   ├── llvm2abap.go          # Parser + compiler (LLVM IR text → typed ABAP)
+│   ├── llvm2abap_test.go     # Unit tests (3 tests, 34-function corpus)
+│   ├── README.md             # Documentation
+│   └── testdata/
+│       ├── corpus.c           # 34-function C test corpus
+│       └── corpus.ll          # LLVM IR (clang -O1)
 │
 └── cache/                    # Caching infrastructure (Report 010)
     ├── cache.go              # Core interfaces and types
@@ -352,18 +138,8 @@ pkg/
 | Add UI5/BSP feature | `pkg/adt/ui5.go` |
 | Add workflow | `pkg/adt/workflows.go` |
 | Add XML types | `pkg/adt/xml.go` |
-| Add version history feature | `pkg/adt/revisions.go` |
-| Add refactoring tool | `pkg/adt/refactoring.go` |
-| Add quick fix tool | `pkg/adt/quickfix.go` |
-| Add testing/quality tool | `pkg/adt/testing.go` |
-| Add CDS analysis tool | `pkg/adt/cds_tools.go` |
-| Add code analysis rule | `pkg/adt/codeanalysis.go` |
-| Add SQL performance rule | `pkg/adt/sqlperf.go` |
-| Add impact analysis layer | `pkg/adt/impact.go` |
-| Add regression check | `pkg/adt/regression.go` |
+| Add ABAP lint rule | `pkg/abaplint/lexer.go` |
 | Add integration test | `pkg/adt/integration_test.go` |
-| Add ABAP help feature | `pkg/adt/help.go` |
-| Configure tool visibility | `pkg/config/systems.go`, `cmd/vsp/config_cmd.go` |
 
 ## Adding a New Tool
 
@@ -439,18 +215,14 @@ See `embedded/abap/zcl_vsp_amdp_service.clas.abap` for ABAP service implementati
 
 ## Testing
 
-### Unit Tests (345 tests)
+### Unit Tests (244 tests)
 - Mock HTTP client (see `client_test.go`, `http_test.go`, `workflows_test.go`)
 - Cookie parsing tests (`cookies_test.go`)
 - Unified tools tests (GetSource, WriteSource, GrepObjects, GrepPackages)
 - Safety checks (`safety_test.go`)
-- Refactoring tests (`refactoring_test.go`, `quickfix_test.go`)
-- Testing & quality tests (`testing_test.go`)
-- CDS tools tests (`cds_tools_test.go`)
-- DDIC & transport tests (`ddic_test.go`)
 - Run: `go test ./...`
 
-### Integration Tests (56 tests)
+### Integration Tests (21+ tests)
 - Build tag: `integration`
 - Create objects in `$TMP` package, clean up after
 - Run: `go test -tags=integration -v ./pkg/adt/`
@@ -600,17 +372,16 @@ When creating a new report:
 
 | Metric | Value |
 |--------|-------|
-| **Tools** | 146 (104 focused, 146 expert) |
-| **Unit Tests** | 345 |
-| **Integration Tests** | 56 |
+| **Tools** | 122 (81 focused, 122 expert) |
+| **Unit Tests** | 250+ |
+| **Integration Tests** | 34 |
 | **Platforms** | 9 |
 | **Phase** | 5 (TAS-Style Debugging) - Complete |
-| **Reports** | 96 numbered + 11 reference docs |
-| **Lua Scripting** | ✅ Complete (v2.14 - REPL, 40+ bindings, example scripts) |
+| **Reports** | 29 numbered + 6 reference docs |
+| **Lua Scripting** | ✅ Complete (v2.32 - REPL, 50+ bindings, 8 example scripts) |
 | **Cache Package** | ✅ Complete (in-memory + SQLite) |
-| **Safety System** | ✅ Complete (operation filtering, package restrictions, transportable edits protection) |
-| **Feature Detection** | ✅ Complete (GetFeatures tool, auto/on/off for HANA, abapGit, RAP, AMDP, UI5, Transport, SourceSearch) |
-| **SourceSearch** | ✅ Complete (SRIS HANA fulltext search - requires SFW5 SRIS_SOURCE_SEARCH) |
+| **Safety System** | ✅ Complete (operation filtering, package restrictions) |
+| **Feature Detection** | ✅ Complete (GetFeatures tool, auto/on/off for abapGit, RAP, AMDP, UI5, Transport) |
 | **DSL Package** | ✅ Complete (fluent API, YAML workflows, test orchestration, batch import/export) |
 | **Batch Import/Export** | ✅ Complete (v2.12 - abapGit-compatible format, priority ordering) |
 | **Pipeline Builder** | ✅ Complete (v2.12 - DeployPipeline, RAPPipeline, ExportPipeline) |
@@ -623,24 +394,52 @@ When creating a new report:
 | **RAP OData E2E** | ✅ Complete (DDLS, SRVD, SRVB create + publish) |
 | **External Debugger** | ⚠️ HTTP unreliable → Use WebSocket ZADT_VSP (stateful APC) |
 | **AMDP Debugger** | ⚠️ Experimental (Session works, breakpoints need investigation - expert mode only) |
-| **Transport Mgmt** | ✅ Complete (6 tools with safety controls, SQL fallback for sandbox systems) |
-| **Transportable Edits** | ✅ Complete (v2.24.0 - --allow-transportable-edits safety flag) |
-| **Version History** | ✅ Complete (GetRevisions, GetRevisionSource, CompareVersions - Atom feed parsing) |
+| **Transport Mgmt** | ✅ Complete (5 tools with safety controls - v2.11.0) |
 | **UI5/BSP Mgmt** | ✅ Partial (Read ops work; Create needs alternate API) |
 | **Tool Groups** | ✅ Complete (--disabled-groups: 5/U, T, H, D, C) |
-| **Tool Visibility** | ✅ Complete (.vsp.json granular tool enable/disable) |
 | **Class Includes** | ✅ Complete (v2.12 - testclasses, locals_def, locals_imp, macros) |
-| **abapGit Integration** | ✅ Complete (v2.16.0 - WebSocket, GitTypes, GitExport to disk - 158 object types) |
+| **abapGit Integration** | ✅ Complete (v2.16.0 - WebSocket, GitTypes, GitExport - 158 object types) |
 | **Install Tools** | ✅ Complete (v2.17.0 - InstallZADTVSP, InstallAbapGit, ListDependencies) |
-| **GetAbapHelp** | ✅ Complete (ABAP keyword docs, Level 2 via ZADT_VSP WebSocket) |
-| **Namespace Support** | ✅ Complete (URL encoding for /NAMESPACE/ objects) |
-| **HTTP Proxy** | ✅ Complete (HTTP_PROXY/HTTPS_PROXY env var support) |
-| **Multi-System Config** | ✅ Complete (pkg/config, vsp config subcommand) |
-| **ADT Refactoring** | ✅ Complete (RenameRefactoring, ExtractMethod, QuickFix — 5 tools, 33 tests) |
-| **Testing & Quality** | ✅ Complete (GetCodeCoverage, GetSQLExplainPlan, GetCheckRunResults — 3 tools, 13 tests) |
-| **CDS/RAP Extensions** | ✅ Complete (GetCDSImpactAnalysis, GetCDSElementInfo, DDLX/DCLS in GetSource/WriteSource) |
-| **DDIC Reads** | ✅ Complete (GetSearchHelp, GetLockObject, GetTypeGroup, AddObjectToTransport — 4 tools) |
-| **Intelligence Layer** | ✅ Complete (AnalyzeSQLPerformance, GetImpactAnalysis, AnalyzeABAPCode, CheckRegression — 4 tools, 46 tests, 5 audit rounds) |
+| **Native ABAP Lexer** | ✅ Complete (v2.31 - abaplint lexer ported to Go, 100% oracle match, 22K tokens verified) |
+| **ABAP Statement Parser** | ✅ Complete (v2.31 - 91 statement types, 100% oracle match, 3,254 statements) |
+| **ABAP Linter** | ✅ Complete (v2.32 - 8 rules, 100% oracle match, 795μs/file) |
+| **Context Depth** | ✅ Complete (v2.31 - multi-level dep expansion, depth 1-3, cycle detection) |
+| **CLI Toolchain** | ✅ Complete (v2.32 - 28 commands: query, grep, graph, deps, lint, parse, compile, execute) |
+| **WASM Self-Host** | ✅ Verified (v2.32 - 3-way proof: Native 51/51, Go OK, ABAP 11/11 on SAP) |
+| **TS→Go Transpiler** | ✅ Complete (v2.32 - produces valid Go from abaplint TS, 3 files compile) |
+| **LLVM IR→ABAP** | ✅ Complete (v2.33 - typed CLASS-METHODS, 34+28 functions, FatFS, SAP verified 5/5) |
+| **WASM Block-as-METHOD** | ✅ Complete (v2.33 - CLASS g, 12K methods, QuickJS GENERATE rc=0 on SAP) |
+| **TS→ABAP Pipeline** | ✅ Proven (v2.33 - Porffor→WASM→ABAP chain verified) |
+
+### Offline ABAP Testing (without SAP)
+
+The generated ABAP can be verified offline using three tools:
+
+1. **pkg/abaplint** (Go port) — lexer + parser, `vsp lint --file` / `vsp parse --file`
+2. **@abaplint/transpiler-cli** (npm) — transpiles ABAP → JavaScript, runs locally via node
+3. **SAP GENERATE SUBROUTINE POOL** — runtime compilation on SAP (needs connection)
+
+```bash
+# Lint check (syntax only)
+vsp lint --file output.abap
+vsp parse --file output.abap --format summary
+
+# Transpile + execute (no SAP needed!)
+# Install: npm install -g @abaplint/transpiler-cli @abaplint/cli
+npx @abaplint/transpiler-cli   # transpiles ABAP → JS in current dir
+node output.mjs                 # runs the transpiled code
+
+# Full pipeline: C → LLVM → ABAP → lint → transpile → execute
+vsp compile llvm mycode.c --class zcl_x -o output.abap
+vsp lint --file output.abap
+# then transpile + run via @abaplint/transpiler-cli
+```
+
+**Key npm packages:**
+- `@abaplint/core` — ABAP lexer/parser (TypeScript, by Lars Hvam)
+- `@abaplint/cli` — CLI for abaplint
+- `@abaplint/transpiler-cli` — ABAP → JavaScript transpiler
+- `open-abap-core` — ABAP runtime library for transpiled code (auto-fetched)
 
 ### DSL & Workflow Usage
 
@@ -685,73 +484,39 @@ pipeline := dsl.RAPPipeline(client, "./src/", "$ZRAY", "ZTRAVEL_SB")
 ```
 
 ### Roadmap
-See [docs/FUTURE-PLAN.md](docs/FUTURE-PLAN.md) for the full development plan.
-- **Priority 1:** ~~Intelligence Layer~~ ✅ DONE — impact analysis, SQL performance, code analysis, regression detection
-- **Priority 2:** Workflow Enhancement — DSL conditionals/parallel, pre-built workflow templates
-- **Priority 3:** CI/CD Integration — GitHub/GitLab Actions, ATC as PR comments, multi-system transport
-- **Priority 4:** AI Enhancement — autonomous RCA, coverage-driven test gen, AI-guided refactoring
+- **Phase 5:** Graph Traversal & Analysis (Design: Reports 005-007)
+- **Phase 6:** Standard API Surface Scraper (Design: Report 006)
+- **Phase 7:** Test Intelligence (Design: Report 008)
+- Transport Management
+- ATC Integration
+- CDS View Support
+- RAP/BDEF Support
 
 ---
 
-## Last Session Reference (2026-02-25)
+## Last Session Reference (2026-03-20)
 
-### Objective: RunATCCheckTransport + Security Hardening — COMPLETED ✅
+### Objective: Native Go ABAP Lexer + Context Depth - COMPLETED ✅
 
-Added `RunATCCheckTransport` tool and `--timeout` / `SAP_TIMEOUT` config. Full double audit performed (3 specialists + Chief Architect). All blocking issues fixed.
+1. ✅ **Native Go ABAP Lexer** (`pkg/abaplint/`)
+   - Mechanical port of abaplint TypeScript lexer to Go
+   - 48 token types, 6 lexer modes, whitespace-context encoding
+   - Oracle-verified: 100% match on 22,612 tokens across 29 files
+   - ~3.5M tokens/sec, zero dependencies
+   - Differential test framework: `oracle.js` + `oracle_fixtures.json`
 
-### What Was Done
+2. ✅ **Context Depth Parameter** (`pkg/ctxcomp/`)
+   - `Compressor.WithDepth(n)` — multi-level dependency expansion (1-3)
+   - `handleGetContext` accepts `depth` parameter
+   - Cycle detection via `seen` set, shared maxDeps budget across levels
 
-1. ✅ **RunATCCheckTransport** — ATC check on all R3TR source objects in a transport request
-   - Supports CLAS, INTF, PROG, FUGR, DCLS, DDLS, BDEF (LIMU sub-objects covered via parent)
-   - Requires `--enable-transports` flag; returns clear hint if missing
-   - Files: `pkg/adt/devtools.go` (CreateATCRunMulti, TransportObjectToADTURL, RunATCCheckObjects), `internal/mcp/handlers_atc.go` (handleRunATCCheckTransport), `internal/mcp/server.go` (registration)
-
-2. ✅ **`--timeout` / `SAP_TIMEOUT`** — Configurable HTTP request timeout
-   - Default: 60s (set as cobra default), `--timeout=0` = no timeout
-   - File: `cmd/vsp/main.go` — `DurationVar` flag + viper binding
-
-3. ✅ **Security hardening** (from double audit: 3 specialists + Chief Architect)
-   - XML escaping for ATC object URLs (`xmlEscape()` function in devtools.go)
-   - Correct versioned Content-Type: `application/vnd.sap.atc.run.parameters.v1+xml`
-   - `url.PathEscape()` for URL path segments (namespace object support `/VENDOR/NAME`)
-   - `url.Values` for all query parameters (variant, worklistId)
-   - Correct Accept header: `application/vnd.sap.atc.worklist.v1+xml`
-   - `json.MarshalIndent` error handling in all 3 ATC handlers (was silently ignored)
+3. ✅ **parse_abap + analyze_deps MCP tools** (previous commit)
+   - `SAP(action="analyze", params={"type": "parse_abap", ...})`
+   - `SAP(action="analyze", params={"type": "analyze_deps", ...})`
 
 ### TODO
 
+- [ ] **Phase 2: Statement parser** — port abaplint 2_statements to Go (318 types, 227 expressions)
+- [ ] **Phase 3: Lint rules** — cherry-pick naming, obsolete, line_length rules
+- [ ] **Wire `pkg/abaplint` lexer** into MCP parse_abap handler (replace self-written tokenizer)
 - [ ] **Re-add ALV capture for RunReport**
-- [ ] **Test SAP GUI breakpoint sharing** - Set breakpoint via vsp, trigger in SAP GUI
-- [ ] **Integration tests** for RunATCCheckTransport (requires SAP system with transport)
-
----
-
-## Last Session Reference (2026-02-21)
-
-### ADT Gaps Roadmap - All 4 Phases COMPLETED ✅
-
-Implemented all 4 phases of the ADT API gaps roadmap (`docs/ROADMAP-ADT-GAPS.md`):
-
-**Phase 1: Refactoring (5 tools)** — RenameRefactoring, ExtractMethod, GetQuickFixProposals, ApplyQuickFix, ApplyATCQuickFix
-- Files: `pkg/adt/refactoring.go`, `pkg/adt/quickfix.go`, `internal/mcp/handlers_refactoring.go`
-- Tests: 33
-
-**Phase 2: Testing & Quality (3 tools)** — GetCodeCoverage, GetSQLExplainPlan, GetCheckRunResults
-- Files: `pkg/adt/testing.go`, `internal/mcp/handlers_testing.go`
-- Tests: 13
-
-**Phase 3: CDS/RAP Completeness (2 tools + 2 object types)** — GetCDSImpactAnalysis, GetCDSElementInfo + DDLX/DCLS in GetSource/WriteSource
-- Files: `pkg/adt/cds_tools.go`, `internal/mcp/handlers_cds.go`
-- Tests: 10
-
-**Phase 4: DDIC & Misc (4 tools)** — GetSearchHelp, GetLockObject, GetTypeGroup, AddObjectToTransport
-- Files: `pkg/adt/ddic_test.go` (new), modified `client.go`, `transport.go`, `handlers_read.go`, `handlers_transport.go`
-- Tests: 8
-
-**Total: 14 new tools, 64 new unit tests across all 4 phases**
-
-### TODO
-
-- [ ] **Re-add ALV capture for RunReport**
-- [ ] **Test SAP GUI breakpoint sharing** - Set breakpoint via vsp, trigger in SAP GUI
-- [ ] **Integration tests** for new tools (requires SAP S23/SC3 system)

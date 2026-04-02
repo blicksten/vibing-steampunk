@@ -69,6 +69,7 @@ abap-adt-api/
 
 # Session logs
 sessions/
+node_modules/
 
 # Logs
 logs/
@@ -84,3 +85,7 @@ test-summary.md
 class-analysis-*.md
 integration-test-*.log
 *-sc3.log
+
+# Transient files
+*.jsonl
+2026-*-last-login-*
