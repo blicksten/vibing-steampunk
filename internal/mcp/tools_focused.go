@@ -108,6 +108,33 @@ func focusedToolSet() map[string]bool {
 		"AMDPSetBreakpoint":  true,
 		"AMDPGetBreakpoints": true,
 
+		// ADT Refactoring & Quick Fix (5)
+		"RenameRefactoring":    true,
+		"ExtractMethod":        true,
+		"GetQuickFixProposals": true,
+		"ApplyQuickFix":        true,
+		"ApplyATCQuickFix":     true,
+
+		// Version History (3)
+		"GetRevisions":      true,
+		"GetRevisionSource": true,
+		"CompareVersions":   true,
+
+		// Testing & Quality (3)
+		"GetCodeCoverage":    true,
+		"GetSQLExplainPlan":  true,
+		"GetCheckRunResults": true,
+
+		// CDS Extensions (2)
+		"GetCDSImpactAnalysis": true,
+		"GetCDSElementInfo":    true,
+
+		// Intelligence Layer (4)
+		"AnalyzeSQLPerformance": true,
+		"GetImpactAnalysis":     true,
+		"AnalyzeABAPCode":       true,
+		"CheckRegression":       true,
+
 		// CTS/Transport Management (2 read-only in focused mode)
 		"ListTransports": true, // List transport requests
 		"GetTransport":   true, // Get transport details with objects
