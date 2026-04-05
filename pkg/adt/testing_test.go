@@ -8,6 +8,17 @@ import (
 	"testing"
 )
 
+// newCSRFResponse creates a mock response with CSRF header for testing tests.
+func newCSRFResponse() *http.Response {
+	h := make(http.Header)
+	h.Set("X-CSRF-Token", "test-token")
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader("")),
+		Header:     h,
+	}
+}
+
 // --- Coverage Tests ---
 
 func TestParseCoverageResult(t *testing.T) {
@@ -98,8 +109,8 @@ func TestClient_GetCodeCoverage(t *testing.T) {
 
 	mock := &mockTransportClient{
 		responses: map[string]*http.Response{
-			"/sap/bc/adt/core/discovery":       newCSRFResponse(),
-			"/sap/bc/adt/abapunit/testruns":    newTestResponse(coverageXML),
+			"/sap/bc/adt/core/discovery":    newCSRFResponse(),
+			"/sap/bc/adt/abapunit/testruns": newTestResponse(coverageXML),
 		},
 	}
 
@@ -130,113 +141,6 @@ func TestClient_GetCodeCoverage(t *testing.T) {
 	bodyBytes, _ := io.ReadAll(lastReq.Body)
 	if !strings.Contains(string(bodyBytes), `coverage active="true"`) {
 		t.Error("Request body should contain coverage active=true")
-	}
-}
-
-// --- SQL Explain Plan Tests ---
-
-func TestParseSQLExplainPlan(t *testing.T) {
-	xmlResponse := `<?xml version="1.0" encoding="UTF-8"?>
-<explainResult>
-  <node id="1" operator="COLUMN TABLE SCAN" tableName="T000" indexName="" cost="1.5" outputRowCount="100">
-    <node id="2" operator="FILTER" tableName="" indexName="" cost="0.5" outputRowCount="10"/>
-  </node>
-</explainResult>`
-
-	result, err := parseSQLExplainPlan([]byte(xmlResponse), "SELECT * FROM T000")
-	if err != nil {
-		t.Fatalf("parseSQLExplainPlan failed: %v", err)
-	}
-
-	if result.Query != "SELECT * FROM T000" {
-		t.Errorf("Query = %q", result.Query)
-	}
-	if len(result.Nodes) != 1 {
-		t.Fatalf("Expected 1 root node, got %d", len(result.Nodes))
-	}
-	if result.Nodes[0].Operator != "COLUMN TABLE SCAN" {
-		t.Errorf("Root operator = %q, want %q", result.Nodes[0].Operator, "COLUMN TABLE SCAN")
-	}
-	if result.Nodes[0].Table != "T000" {
-		t.Errorf("Root table = %q, want %q", result.Nodes[0].Table, "T000")
-	}
-	if result.Nodes[0].Rows != 100 {
-		t.Errorf("Root rows = %d, want 100", result.Nodes[0].Rows)
-	}
-	if len(result.Nodes[0].Children) != 1 {
-		t.Fatalf("Expected 1 child node, got %d", len(result.Nodes[0].Children))
-	}
-	if result.Nodes[0].Children[0].Operator != "FILTER" {
-		t.Errorf("Child operator = %q, want %q", result.Nodes[0].Children[0].Operator, "FILTER")
-	}
-}
-
-func TestParseSQLExplainPlan_Empty(t *testing.T) {
-	result, err := parseSQLExplainPlan([]byte(""), "SELECT 1")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if result.Query != "SELECT 1" {
-		t.Errorf("Query = %q", result.Query)
-	}
-	if len(result.Nodes) != 0 {
-		t.Errorf("Expected 0 nodes for empty response")
-	}
-}
-
-func TestParseSQLExplainPlan_NonXML(t *testing.T) {
-	// When server returns non-XML, should wrap as raw response
-	result, err := parseSQLExplainPlan([]byte("No plan available"), "SELECT 1")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(result.Nodes) != 1 {
-		t.Fatalf("Expected 1 raw node, got %d", len(result.Nodes))
-	}
-	if result.Nodes[0].Operator != "RAW_RESPONSE" {
-		t.Errorf("Expected RAW_RESPONSE operator, got %q", result.Nodes[0].Operator)
-	}
-}
-
-func TestClient_GetSQLExplainPlan(t *testing.T) {
-	explainXML := `<?xml version="1.0" encoding="UTF-8"?>
-<explainResult>
-  <node id="1" operator="TABLE SCAN" tableName="SFLIGHT" cost="2.0" outputRowCount="50"/>
-</explainResult>`
-
-	mock := &mockTransportClient{
-		responses: map[string]*http.Response{
-			"/sap/bc/adt/core/discovery":        newCSRFResponse(),
-			"/sap/bc/adt/datapreview/freestyle": newTestResponse(explainXML),
-		},
-	}
-
-	cfg := NewConfig("https://sap.example.com:44300", "user", "pass")
-	transport := NewTransportWithClient(cfg, mock)
-	client := NewClientWithTransport(cfg, transport)
-
-	result, err := client.GetSQLExplainPlan(context.Background(), "SELECT * FROM SFLIGHT")
-	if err != nil {
-		t.Fatalf("GetSQLExplainPlan failed: %v", err)
-	}
-
-	if len(result.Nodes) != 1 {
-		t.Fatalf("Expected 1 node, got %d", len(result.Nodes))
-	}
-	if result.Nodes[0].Table != "SFLIGHT" {
-		t.Errorf("Table = %q, want %q", result.Nodes[0].Table, "SFLIGHT")
-	}
-}
-
-func TestClient_GetSQLExplainPlan_ReadOnly(t *testing.T) {
-	cfg := NewConfig("https://sap.example.com:44300", "user", "pass")
-	cfg.Safety.AllowedOps = "W" // Only allow Write ops, exclude Read
-	transport := NewTransportWithClient(cfg, &mockTransportClient{responses: map[string]*http.Response{}})
-	client := NewClientWithTransport(cfg, transport)
-
-	_, err := client.GetSQLExplainPlan(context.Background(), "SELECT 1")
-	if err == nil {
-		t.Error("Expected error for blocked ops")
 	}
 }
 

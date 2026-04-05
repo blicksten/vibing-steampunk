@@ -183,7 +183,7 @@ func NewConfig(baseURL, username, password string, opts ...Option) *Config {
 		Password:    password,
 		Client:      "001",
 		Language:    "EN",
-		SessionType: SessionStateful,
+		SessionType: SessionStateless,
 		Timeout:     60 * time.Second,
 		Safety:      UnrestrictedSafetyConfig(), // Default: no restrictions for backwards compatibility
 		Features:    DefaultFeatureConfig(),     // Default: auto-detect all features

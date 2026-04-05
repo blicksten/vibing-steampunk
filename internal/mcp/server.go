@@ -4,8 +4,6 @@ package mcp
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -86,14 +84,18 @@ type Config struct {
 	FeatureUI5       string // UI5/Fiori BSP management
 	FeatureTransport string // CTS transport management (distinct from EnableTransports safety)
 
-	// HTTP request timeout (default: 60s, 0 = no timeout)
-	Timeout time.Duration
-
 	// Debugger configuration
 	TerminalID string // SAP GUI terminal ID for cross-tool breakpoint sharing
 
-	// HTTPPort when > 0, serve MCP over SSE on this port instead of STDIO.
-	HTTPPort int
+	// Session keep-alive interval (0 = disabled)
+	// Sends periodic pings to prevent session timeout during idle periods.
+	// Useful for cookie/browser-auth where sessions expire server-side.
+	KeepAliveInterval time.Duration
+
+	// Transport mode: "stdio" (default) or "http"
+	Transport string
+	// HTTP address for Streamable HTTP transport (default: ":8080")
+	HTTPAddr string
 
 	// Granular tool visibility (from .vsp.json)
 	// Key: tool name, Value: true=enabled, false=disabled
@@ -116,11 +118,6 @@ func NewServer(cfg *Config) *Server {
 	}
 	if cfg.Verbose {
 		opts = append(opts, adt.WithVerbose())
-	}
-	if cfg.Timeout > 0 {
-		opts = append(opts, adt.WithTimeout(cfg.Timeout))
-	} else if cfg.Timeout == 0 {
-		opts = append(opts, adt.WithTimeout(0))
 	}
 
 	// Configure safety settings
@@ -196,6 +193,11 @@ func NewServer(cfg *Config) *Server {
 	// Register tools based on mode, disabled groups, and granular tool config
 	s.registerTools(cfg.Mode, cfg.DisabledGroups, cfg.ToolsConfig)
 
+	// Start session keep-alive if configured
+	if cfg.KeepAliveInterval > 0 {
+		adtClient.StartKeepAlive(cfg.KeepAliveInterval, cfg.Verbose)
+	}
+
 	return s
 }
 
@@ -216,26 +218,15 @@ func (s *Server) ServeStdio() error {
 	return server.ServeStdio(s.mcpServer)
 }
 
-// ServeHTTP starts the MCP server over SSE on the given host and port.
-func (s *Server) ServeHTTP(host string, port int) error {
-	sseServer := server.NewSSEServer(s.mcpServer,
-		server.WithBaseURL(fmt.Sprintf("http://%s:%d", host, port)),
-	)
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"status":"ok"}`)
-	})
-	mux.Handle("/", sseServer)
-	addr := fmt.Sprintf("%s:%d", host, port)
-	log.Printf("MCP SSE server listening on http://%s/sse", addr)
-	srv := &http.Server{
-		Addr:              addr,
-		Handler:           mux,
-		ReadHeaderTimeout: 5 * time.Second,
-		IdleTimeout:       120 * time.Second,
-	}
-	return srv.ListenAndServe()
+// ServeHTTP starts the MCP server as a Streamable HTTP endpoint.
+func (s *Server) ServeHTTP(addr string) error {
+	httpServer := server.NewStreamableHTTPServer(s.mcpServer)
+	return httpServer.Start(addr)
+}
+
+// GetMCPServer returns the underlying MCP server (for custom transport setup).
+func (s *Server) GetMCPServer() *server.MCPServer {
+	return s.mcpServer
 }
 
 // newToolResultError creates an error result for tool execution failures.

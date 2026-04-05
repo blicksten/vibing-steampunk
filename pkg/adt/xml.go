@@ -12,11 +12,6 @@ const (
 	NSAtom    = "http://www.w3.org/2005/Atom"
 )
 
-// ADT link relation types
-const (
-	RelVersions = "http://www.sap.com/adt/relations/versions"
-)
-
 // ObjectReference represents a reference to an ABAP object.
 type ObjectReference struct {
 	XMLName     xml.Name `xml:"objectReference"`
@@ -70,48 +65,6 @@ type SearchResult struct {
 type SearchResults struct {
 	XMLName xml.Name       `xml:"objectReferences"`
 	Results []SearchResult `xml:"objectReference"`
-}
-
-// SourceSearchTextLine represents a single line match in source search.
-type SourceSearchTextLine struct {
-	URI     string `xml:"uri,attr" json:"uri,omitempty"`
-	Content string `xml:"content" json:"content"`
-}
-
-// SourceSearchMainObject represents the main object info in search result.
-type SourceSearchMainObject struct {
-	Name        string `xml:"name,attr" json:"name"`
-	Type        string `xml:"type,attr" json:"type"`
-	Description string `xml:"description,attr,omitempty" json:"description,omitempty"`
-	Responsible string `xml:"responsible,attr,omitempty" json:"responsible,omitempty"`
-	ChangedBy   string `xml:"changedBy,attr,omitempty" json:"changedBy,omitempty"`
-}
-
-// SourceSearchObject represents a single object match from SRIS fulltext search.
-type SourceSearchObject struct {
-	URI        string                   `xml:"uri,attr" json:"uri"`
-	ParentURI  string                   `xml:"parentUri,attr,omitempty" json:"parentUri,omitempty"`
-	IsResult   string                   `xml:"isResult,attr,omitempty" json:"isResult,omitempty"`
-	MainObject SourceSearchMainObject   `xml:"adtMainObject" json:"mainObject"`
-	TextLines  []SourceSearchTextLine   `xml:"textLines>textLine" json:"textLines,omitempty"`
-}
-
-// SourceSearchResults wraps source search results from the ADT textsearch API.
-type SourceSearchResults struct {
-	XMLName         xml.Name             `xml:"textSearchResult"`
-	NumberOfResults int                  `xml:"numberOfResults,attr" json:"numberOfResults"`
-	TotalResults    int                  `xml:"totalNumberOfResults,attr" json:"totalNumberOfResults"`
-	QueryTimeMillis int                  `xml:"queryTimeMillis,attr" json:"queryTimeMillis"`
-	Objects         []SourceSearchObject `xml:"textSearchObjects>textSearchObject" json:"objects"`
-}
-
-// SourceSearchResponse contains the parsed results of a source search.
-type SourceSearchResponse struct {
-	Objects         []SourceSearchObject `json:"objects"`
-	NumberOfResults int                  `json:"numberOfResults"`
-	TotalResults    int                  `json:"totalResults"`
-	QueryTimeMillis int                  `json:"queryTimeMillis"`
-	Query           string               `json:"query"`
 }
 
 // ObjectStructure represents the structure of an ABAP object.
@@ -330,15 +283,6 @@ func ParseSearchResults(data []byte) ([]SearchResult, error) {
 	return results.Results, nil
 }
 
-// ParseSourceSearchResults parses XML source search results from SRIS textsearch API.
-func ParseSourceSearchResults(data []byte) (*SourceSearchResults, error) {
-	var results SourceSearchResults
-	if err := xml.Unmarshal(data, &results); err != nil {
-		return nil, err
-	}
-	return &results, nil
-}
-
 // ParseObjectStructure parses XML object structure.
 func ParseObjectStructure(data []byte) (*ObjectStructure, error) {
 	var obj ObjectStructure
@@ -381,6 +325,26 @@ func ExtractSourceLink(links []Link) string {
 		}
 	}
 	return ""
+}
+
+// --- API Release State Types (Clean Core / ABAP Cloud) ---
+
+// APIReleaseState represents the release state of an ABAP object for Clean Core compatibility.
+// This is used to check if an object is released for use in ABAP Cloud / S/4HANA Cloud.
+type APIReleaseState struct {
+	XMLName               xml.Name            `xml:"apiState" json:"-"`
+	ReleaseState          string              `xml:"releaseState,attr" json:"releaseState"`
+	UseInCloudDevelopment bool                `xml:"useInCloudDevelopment,attr" json:"useInCloudDevelopment"`
+	UseInKeyUserApps      bool                `xml:"useInKeyUserApps,attr" json:"useInKeyUserApps"`
+	Deprecated            *APIDeprecationInfo `xml:"deprecation,omitempty" json:"deprecation,omitempty"`
+}
+
+// APIDeprecationInfo contains deprecation details for a released API.
+type APIDeprecationInfo struct {
+	XMLName        xml.Name `xml:"deprecation" json:"-"`
+	ReleaseState   string   `xml:"releaseState,attr,omitempty" json:"releaseState,omitempty"`
+	Successor      string   `xml:"successor,attr,omitempty" json:"successor,omitempty"`
+	DeprecatedSince string  `xml:"deprecatedSince,attr,omitempty" json:"deprecatedSince,omitempty"`
 }
 
 // --- Revision (Version History) Types ---
@@ -447,4 +411,55 @@ func ParseRevisionFeed(data []byte) ([]Revision, error) {
 	}
 
 	return revisions, nil
+}
+
+// SourceSearchTextLine represents a single line match in source search.
+type SourceSearchTextLine struct {
+	URI     string `xml:"uri,attr" json:"uri,omitempty"`
+	Content string `xml:"content" json:"content"`
+}
+
+// SourceSearchMainObject represents the main object info in search result.
+type SourceSearchMainObject struct {
+	Name        string `xml:"name,attr" json:"name"`
+	Type        string `xml:"type,attr" json:"type"`
+	Description string `xml:"description,attr,omitempty" json:"description,omitempty"`
+	Responsible string `xml:"responsible,attr,omitempty" json:"responsible,omitempty"`
+	ChangedBy   string `xml:"changedBy,attr,omitempty" json:"changedBy,omitempty"`
+}
+
+// SourceSearchObject represents a single object match from SRIS fulltext search.
+type SourceSearchObject struct {
+	URI        string                 `xml:"uri,attr" json:"uri"`
+	ParentURI  string                 `xml:"parentUri,attr,omitempty" json:"parentUri,omitempty"`
+	IsResult   string                 `xml:"isResult,attr,omitempty" json:"isResult,omitempty"`
+	MainObject SourceSearchMainObject `xml:"adtMainObject" json:"mainObject"`
+	TextLines  []SourceSearchTextLine `xml:"textLines>textLine" json:"textLines,omitempty"`
+}
+
+// SourceSearchResults wraps source search results from the ADT textsearch API.
+type SourceSearchResults struct {
+	XMLName         xml.Name             `xml:"textSearchResult"`
+	NumberOfResults int                  `xml:"numberOfResults,attr" json:"numberOfResults"`
+	TotalResults    int                  `xml:"totalNumberOfResults,attr" json:"totalNumberOfResults"`
+	QueryTimeMillis int                  `xml:"queryTimeMillis,attr" json:"queryTimeMillis"`
+	Objects         []SourceSearchObject `xml:"textSearchObjects>textSearchObject" json:"objects"`
+}
+
+// SourceSearchResponse contains the parsed results of a source search.
+type SourceSearchResponse struct {
+	Objects         []SourceSearchObject `json:"objects"`
+	NumberOfResults int                  `json:"numberOfResults"`
+	TotalResults    int                  `json:"totalResults"`
+	QueryTimeMillis int                  `json:"queryTimeMillis"`
+	Query           string               `json:"query"`
+}
+
+// ParseSourceSearchResults parses XML source search results from SRIS textsearch API.
+func ParseSourceSearchResults(data []byte) (*SourceSearchResults, error) {
+	var results SourceSearchResults
+	if err := xml.Unmarshal(data, &results); err != nil {
+		return nil, err
+	}
+	return &results, nil
 }

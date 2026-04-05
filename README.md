@@ -23,7 +23,7 @@ The full version history is in [CHANGELOG.md](CHANGELOG.md).
 
 ### Hyperfocused Mode — 1 Tool to Rule Them All
 
-Single `SAP(action, target, params)` tool replaces up to 122 individual tool definitions.
+Single `SAP(action, target, params)` tool replaces up to 129 individual tool definitions.
 
 ```
 SAP(action="read",   target="CLAS ZCL_TRAVEL")
@@ -32,7 +32,7 @@ SAP(action="create", target="DEVC", params={"name": "$ZOZIK", "description": "Ne
 SAP(action="help",   target="debug")
 ```
 
-| Metric | Focused (81 tools) | Expert (122 tools) | Hyperfocused (1 tool) |
+| Metric | Focused (100 tools) | Expert (147 tools) | Hyperfocused (1 tool) |
 |--------|-------------------:|-------------------:|----------------------:|
 | MCP schema tokens | ~14,000 | ~40,000 | **~200** |
 | Reduction | — | — | **99.5%** |
@@ -193,11 +193,12 @@ See **[CLI Guide](docs/cli-guide.md)** for the complete reference with feature r
 | **ABAP LSP** | Built-in Language Server — real-time diagnostics, go-to-definition, context push |
 | **AI Debugger** | Breakpoints, listener, attach, step, inspect stack & variables |
 | **RAP OData E2E** | Create CDS views, Service Definitions, Bindings → Publish OData services |
-| **Focused Mode** | 81 curated tools optimized for AI assistants |
+| **Focused Mode** | 88 curated tools optimized for AI assistants |
 | **AI-Powered RCA** | Root cause analysis with dumps, traces, profiler + code intelligence |
 | **DSL & Workflows** | Fluent Go API + YAML automation for CI/CD pipelines |
 | **ExecuteABAP** | Run arbitrary ABAP code via unit test wrapper |
 | **Code Analysis** | Call graphs, object structure, find definition/references |
+| **Dependency Analysis** | Call graphs, package boundary checks, dynamic call detection (in progress) |
 | **System Introspection** | System info, installed components, CDS dependencies |
 | **Diagnostics** | Short dumps (RABAX), ABAP profiler (ATRA), SQL traces (ST05) |
 | **File Deployment** | Bypass token limits - deploy large files directly from filesystem |
@@ -206,14 +207,73 @@ See **[CLI Guide](docs/cli-guide.md)** for the complete reference with feature r
 ## Quick Start
 
 ```bash
-# Download from releases
+#Download binary from releases
 curl -LO https://github.com/oisee/vibing-steampunk/releases/latest/download/vsp-linux-amd64
 chmod +x vsp-linux-amd64
 
-# Or build from source
+#Or build from source
 git clone https://github.com/oisee/vibing-steampunk.git && cd vibing-steampunk
 make build
 ```
+### Windows 11 with VS Code + Claude Code extension:
+#### 1. Get the latest vsp release:
+https://github.com/oisee/vibing-steampunk/releases.
+
+If you have trouble downloading executable files in your browser, use `curl -o url` or `wget` to download the file. Name the file `vsp.exe`.
+
+Put the file in a local folder and open the folder in VS Code.
+
+Add the vsp folder to your `PATH` environment variable for your user. Either through command line or Windows Registry Editor `regedit`. Add the vsp folder to `KEY_CURRENT_USER\Environment\Path`.
+
+Restart your VS Code to recognize the updated `PATH` before progressing to the next steps.
+
+#### 2. Initialize the config files:
+Open a terminal in VS Code, then run `./vsp config init` to create config template files:
+-	`.env.example`
+-	`.vsp.json.example`
+-	`.mcp.json.example`
+
+#### 3. Adjust your config files:
+ Make sure you delete the comment lines. Refer to the example files in this `README`.
+
+#### 4. Set up authentication
+
+**For basic auth:** Set up a password for your user to allow for basic authentication. Go to `SU01 > Logon Data`, generate an initial password. Then log in again (without SNC/SSO in SAPGUI) and change the initial password. You are now set up for basic authentication via config file in vsp. Set your environment variables `SAP_USER` and `SAP_PASSWORD` accordingly.
+
+You now need to obtain the SAP hostname for your `SAP_URL` environment variable: Log in to any web-based application (e.g. Fiori Launchpad) and obtain the URL from your browser. Attention: `SAP_URL` is not **not** your message/group server from SAP Logon!
+
+**Alternatively use cookie authentication:**
+If you cannot set a password for your user, you may still use cookie authentication to access your SAP system from vsp. 
+
+Extract cookies manually and save them in `cookies.txt` in your vsp folder. Use cookies `SAP_SESSIONID_SYS_CLI` and `sap-usercontext` on your previously determined URL (caution: use `https://` prefix for secure connections). Refer to below guide on how to manually extract cookies from your browser.
+
+**Template cookie file:**
+```
+# Netscape HTTP Cookie File
+# https://curl.haxx.se/rfc/cookie_spec.html
+
+https://your.domain.com	FALSE	/	TRUE	0	SAP_SESSIONID_SYS_CLI  YOUR_CONTENT
+https://your.domain.com	FALSE	/	TRUE	0	sap-usercontext        YOUR_CONTENT
+```
+Replace the hostname, `SYS` with your system ID (e.g. DS1) and `CLI` with your client number (e.g. 100).
+
+**For BTP/Cloud based systems**: Use cookies `__VCAP_ID__` and `JSESSIONID` on your domain `https://xyz.ondemand.com`. This also works for BTP trial accounts. Also refer to <a href="https://medium.com/@warren_eiserman/vibe-steam-punk-vsp-for-abap-cloud-mac-claude-2864d601978f">this article</a>.
+
+**Obtaining cookies from your browser session:**
+
+The easiest way to do so is to use Edge as it allows you to display cookie contents from its settings page. From there you can copy & paste them into the newly created `cookies.txt` file.
+
+Open any transaction in WebDynpro or Fiori Launchpad. For older environments like ECC it should work with BRF+ transactions that open in a browser. Login with your credentials. Once logged in it’s a matter of extracting the created session cookies.
+
+In Edge, go to `Settings > Privacy, search and services > Cookies > See all cookies and site data`. Search for your top-level domain. There should be two cookies for your system as described above (`SAP_SESSIONID` and `sap-usercontext` or `VCAP_ID` and `JSESSIONID` if your system is cloud-based). Copy the content values for each cookie to your local file and save.
+
+The created cookies are session cookies. They will eventually expire after a timeout and the values in cookies.txt need to be updated. Usually Claude will tell you if this is the case.
+
+#### 5. Test the connection: 
+Use the terminal with this command: `./vsp -s dev search "zcl_*" --type CLAS --max 50`.
+
+You will get prompted with a list of found objects if the connection could be established. 
+
 
 ## CLI Coding Agents
 
@@ -224,7 +284,7 @@ VSP works with **8 CLI coding agents** — not just Claude! Full setup guides wi
 | **Gemini CLI** | Gemini 2.5 Pro/Flash | Yes (1000 req/day) | `.gemini/settings.json` |
 | **Claude Code** | Claude Opus/Sonnet 4.6 | No ($20+/mo) | `.mcp.json` |
 | **GitHub Copilot** | Claude, GPT-5, Gemini | No ($10+/mo) | `.copilot/mcp-config.json` |
-| **OpenAI Codex** | GPT-5-Codex, GPT-4.1 | No ($20+/mo) | `.mcp.json` |
+| **OpenAI Codex** | GPT-5-Codex, GPT-4.1 | No ($20+/mo) | `codex.toml` |
 | **Qwen Code** | Qwen3-Coder | Yes (1000 req/day) | `.qwen/settings.json` |
 | **OpenCode** | 75+ models (BYOK) | Yes (own key) | `opencode.json` |
 | **Goose** | 75+ providers (BYOK) | Yes (own key) | `~/.config/goose/config.yaml` |
@@ -327,7 +387,7 @@ Configure multiple SAP systems in `.vsp.json`:
 ```bash
 vsp --url https://host:44300 --user admin --password secret
 vsp --url https://host:44300 --cookie-file cookies.txt
-vsp --mode expert          # Enable all 122 tools
+vsp --mode expert          # Enable all 147 tools
 vsp --mode hyperfocused    # Single SAP tool (~200 tokens instead of ~40K)
 ```
 
@@ -497,7 +557,7 @@ One axis, three values — `--mode` or `SAP_MODE`:
 
 ```mermaid
 graph LR
-    F["focused<br/>81 tools<br/>~14K tokens<br/><i>default</i>"] --> E["expert<br/>122 tools<br/>~40K tokens"]
+    F["focused<br/>100 tools<br/>~14K tokens<br/><i>default</i>"] --> E["expert<br/>147 tools<br/>~40K tokens"]
     E --> H["hyperfocused<br/>1 tool<br/>~200 tokens"]
     style H fill:#2d6a4f,color:#fff
     style F fill:#264653,color:#fff
@@ -514,8 +574,8 @@ graph LR
 | **Safety controls** | All apply | All apply | All apply (same code path) |
 
 ```bash
-vsp --mode focused       # default — 81 curated tools
-vsp --mode expert        # all 122 tools individually
+vsp --mode focused       # default — 88 curated tools
+vsp --mode expert        # all 147 tools individually
 vsp --mode hyperfocused  # single SAP(action, target, params) tool
 ```
 
@@ -746,7 +806,7 @@ See [AI-Powered RCA Workflows](reports/2025-12-05-013-ai-powered-rca-workflows.m
 - **Reports:** RunReport, GetVariants, GetTextElements, SetTextElements
 - **Install:** InstallZADTVSP, InstallAbapGit, ListDependencies
 
-See [README_TOOLS.md](README_TOOLS.md) for complete tool documentation (122 tools).
+See [README_TOOLS.md](README_TOOLS.md) for complete tool documentation (147 tools).
 
 <details>
 <summary><strong>Capability Matrix</strong></summary>
@@ -921,7 +981,7 @@ vibing-steampunk/
 
 ### Future Considerations
 - [ ] AMDP Session Persistence (enable full HANA debugging)
-- [ ] Graph Traversal & Analysis (code dependency graphs)
+- [ ] **Graph Engine & Boundary Analysis** - initial `CheckBoundaries`, `GraphStats` (v2.37.0, SQL/ADT adapters pending)
 - [ ] Test Intelligence (smart test execution based on changes)
 - [ ] Standard API Surface Scraper
 

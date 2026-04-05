@@ -2,9 +2,22 @@ package adt
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 )
+
+// newCSRFResponseCDS creates a mock response with CSRF header for CDS tests.
+func newCSRFResponseCDS() *http.Response {
+	h := make(http.Header)
+	h.Set("X-CSRF-Token", "test-token")
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader("")),
+		Header:     h,
+	}
+}
 
 // --- CDS Impact Analysis Tests ---
 
@@ -96,7 +109,7 @@ func TestClient_GetCDSImpactAnalysis(t *testing.T) {
 
 	mock := &mockTransportClient{
 		responses: map[string]*http.Response{
-			"/sap/bc/adt/core/discovery":                               newCSRFResponse(),
+			"/sap/bc/adt/core/discovery":                               newCSRFResponseCDS(),
 			"/sap/bc/adt/repository/informationsystem/usageReferences": newTestResponse(impactXML),
 		},
 	}
@@ -119,14 +132,27 @@ func TestClient_GetCDSImpactAnalysis(t *testing.T) {
 }
 
 func TestClient_GetCDSImpactAnalysis_ReadOnly(t *testing.T) {
+	impactXML := `<?xml version="1.0" encoding="UTF-8"?>
+<usageReferences:usageReferenceResult xmlns:usageReferences="http://www.sap.com/adt/ris/usageReferences">
+  <usageReferences:referencedObjects/>
+</usageReferences:usageReferenceResult>`
+
+	mock := &mockTransportClient{
+		responses: map[string]*http.Response{
+			"/sap/bc/adt/core/discovery":                               newCSRFResponseCDS(),
+			"/sap/bc/adt/repository/informationsystem/usageReferences": newTestResponse(impactXML),
+		},
+	}
+
 	cfg := NewConfig("https://sap.example.com:44300", "user", "pass")
 	cfg.Safety.ReadOnly = true
-	transport := NewTransportWithClient(cfg, &mockTransportClient{responses: map[string]*http.Response{}})
+	transport := NewTransportWithClient(cfg, mock)
 	client := NewClientWithTransport(cfg, transport)
 
+	// OpRead should NOT be blocked in read-only mode — only write ops (CDUAW) are blocked
 	_, err := client.GetCDSImpactAnalysis(context.Background(), "ZVIEW")
-	if err == nil {
-		t.Error("Expected error for read-only mode")
+	if err != nil {
+		t.Errorf("GetCDSImpactAnalysis should succeed in read-only mode (OpRead): %v", err)
 	}
 }
 
@@ -244,13 +270,28 @@ func TestClient_GetCDSElementInfo(t *testing.T) {
 }
 
 func TestClient_GetCDSElementInfo_ReadOnly(t *testing.T) {
+	elementXML := `<?xml version="1.0" encoding="UTF-8"?>
+<ddl:ddlSource xmlns:ddl="http://www.sap.com/adt/ddic/ddlsources"
+  ddl:name="ZVIEW">
+  <ddl:content>
+    <ddl:element ddl:name="Field1" ddl:type="CHAR(10)"/>
+  </ddl:content>
+</ddl:ddlSource>`
+
+	mock := &mockTransportClient{
+		responses: map[string]*http.Response{
+			"/sap/bc/adt/ddic/ddl/sources/ZVIEW": newTestResponse(elementXML),
+		},
+	}
+
 	cfg := NewConfig("https://sap.example.com:44300", "user", "pass")
 	cfg.Safety.ReadOnly = true
-	transport := NewTransportWithClient(cfg, &mockTransportClient{responses: map[string]*http.Response{}})
+	transport := NewTransportWithClient(cfg, mock)
 	client := NewClientWithTransport(cfg, transport)
 
+	// OpRead should NOT be blocked in read-only mode — only write ops (CDUAW) are blocked
 	_, err := client.GetCDSElementInfo(context.Background(), "ZVIEW")
-	if err == nil {
-		t.Error("Expected error for read-only mode")
+	if err != nil {
+		t.Errorf("GetCDSElementInfo should succeed in read-only mode (OpRead): %v", err)
 	}
 }

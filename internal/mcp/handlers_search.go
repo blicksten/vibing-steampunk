@@ -39,13 +39,13 @@ func (s *Server) routeSearchAction(ctx context.Context, action, objectType, obje
 // --- Search Handlers ---
 
 func (s *Server) handleSearchObject(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	query, ok := request.Params.Arguments["query"].(string)
+	query, ok := request.GetArguments()["query"].(string)
 	if !ok || query == "" {
 		return newToolResultError("query is required"), nil
 	}
 
 	maxResults := 100
-	if mr, ok := request.Params.Arguments["maxResults"].(float64); ok && mr > 0 {
+	if mr, ok := request.GetArguments()["maxResults"].(float64); ok && mr > 0 {
 		maxResults = int(mr)
 	}
 
@@ -61,18 +61,18 @@ func (s *Server) handleSearchObject(ctx context.Context, request mcp.CallToolReq
 // handleSourceSearch handles SRIS fulltext source search requests.
 // This provides server-side search using HANA fulltext index, much faster than GrepPackages.
 func (s *Server) handleSourceSearch(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	query, ok := request.Params.Arguments["query"].(string)
+	query, ok := request.GetArguments()["query"].(string)
 	if !ok || query == "" {
 		return newToolResultError("query is required"), nil
 	}
 
 	maxResults := 100
-	if mr, ok := request.Params.Arguments["max_results"].(float64); ok && mr > 0 {
+	if mr, ok := request.GetArguments()["max_results"].(float64); ok && mr > 0 {
 		maxResults = int(mr)
 	}
 
 	var objectTypes []string
-	if ot, ok := request.Params.Arguments["object_types"].([]interface{}); ok {
+	if ot, ok := request.GetArguments()["object_types"].([]interface{}); ok {
 		for _, v := range ot {
 			if s, ok := v.(string); ok {
 				objectTypes = append(objectTypes, s)
@@ -81,7 +81,7 @@ func (s *Server) handleSourceSearch(ctx context.Context, request mcp.CallToolReq
 	}
 
 	var packageNames []string
-	if pn, ok := request.Params.Arguments["packages"].([]interface{}); ok {
+	if pn, ok := request.GetArguments()["packages"].([]interface{}); ok {
 		for _, v := range pn {
 			if s, ok := v.(string); ok {
 				packageNames = append(packageNames, s)

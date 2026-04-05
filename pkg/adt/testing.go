@@ -13,10 +13,10 @@ import (
 
 // CoverageResult contains line-level coverage data from a test run.
 type CoverageResult struct {
-	Statements    CoverageStats          `json:"statements"`
-	Branches      CoverageStats          `json:"branches,omitempty"`
-	Procedures    CoverageStats          `json:"procedures,omitempty"`
-	SourceCoverage map[string]*SourceCoverage `json:"sourceCoverage,omitempty"`
+	Statements     CoverageStats              `json:"statements"`
+	Branches       CoverageStats              `json:"branches,omitempty"`
+	Procedures     CoverageStats              `json:"procedures,omitempty"`
+	SourceCoverage map[string]*SourceCoverage  `json:"sourceCoverage,omitempty"`
 }
 
 // CoverageStats contains aggregate coverage statistics.
@@ -28,17 +28,10 @@ type CoverageStats struct {
 
 // SourceCoverage contains coverage data for a single source file.
 type SourceCoverage struct {
-	URI          string        `json:"uri"`
-	Type         string        `json:"type,omitempty"`
-	Name         string        `json:"name,omitempty"`
-	Statements   CoverageStats `json:"statements"`
-	CoveredLines []CoveredLine `json:"coveredLines,omitempty"`
-}
-
-// CoveredLine represents coverage info for a single line.
-type CoveredLine struct {
-	Line     int  `json:"line"`
-	Executed bool `json:"executed"`
+	URI        string        `json:"uri"`
+	Type       string        `json:"type,omitempty"`
+	Name       string        `json:"name,omitempty"`
+	Statements CoverageStats `json:"statements"`
 }
 
 // GetCodeCoverage runs unit tests with coverage enabled and returns coverage data.
@@ -175,132 +168,6 @@ func parseCoverageResult(data []byte) (*CoverageResult, error) {
 	}
 
 	return result, nil
-}
-
-// --- SQL Explain Plan ---
-
-// SQLExplainPlan represents the execution plan for a SQL query.
-type SQLExplainPlan struct {
-	Query    string          `json:"query"`
-	Nodes    []SQLPlanNode   `json:"nodes"`
-	TotalCost float64        `json:"totalCost,omitempty"`
-}
-
-// SQLPlanNode represents a single node in the execution plan tree.
-type SQLPlanNode struct {
-	ID        int           `json:"id"`
-	Operator  string        `json:"operator"`
-	Table     string        `json:"table,omitempty"`
-	Index     string        `json:"index,omitempty"`
-	Cost      float64       `json:"cost,omitempty"`
-	Rows      int           `json:"rows,omitempty"`
-	Children  []SQLPlanNode `json:"children,omitempty"`
-}
-
-// GetSQLExplainPlan returns the execution plan for a SQL query (HANA only).
-func (c *Client) GetSQLExplainPlan(ctx context.Context, sqlQuery string) (*SQLExplainPlan, error) {
-	if err := c.checkSafety(OpRead, "GetSQLExplainPlan"); err != nil {
-		return nil, err
-	}
-
-	if sqlQuery == "" {
-		return nil, fmt.Errorf("SQL query is required")
-	}
-
-	q := url.Values{}
-	q.Set("rowNumber", "0") // We don't need actual data, just the plan
-
-	resp, err := c.transport.Request(ctx, "/sap/bc/adt/datapreview/freestyle", &RequestOptions{
-		Method:      http.MethodPost,
-		Query:       q,
-		Body:        []byte("EXPLAIN PLAN FOR " + sqlQuery),
-		ContentType: "text/plain",
-		Accept:      "application/xml",
-	})
-	if err != nil {
-		// Fallback: try the dedicated explain endpoint
-		resp, err = c.transport.Request(ctx, "/sap/bc/adt/datapreview/ddlServices/explain", &RequestOptions{
-			Method:      http.MethodPost,
-			Body:        []byte(sqlQuery),
-			ContentType: "text/plain",
-			Accept:      "application/xml",
-		})
-		if err != nil {
-			return nil, fmt.Errorf("SQL explain plan failed: %w", err)
-		}
-	}
-
-	return parseSQLExplainPlan(resp.Body, sqlQuery)
-}
-
-func parseSQLExplainPlan(data []byte, query string) (*SQLExplainPlan, error) {
-	if len(data) == 0 {
-		return &SQLExplainPlan{Query: query}, nil
-	}
-
-	xmlStr := string(data)
-	// Strip common ADT namespace prefixes
-	xmlStr = strings.ReplaceAll(xmlStr, "datapreview:", "")
-
-	type planNode struct {
-		XMLName  xml.Name   `xml:"node"`
-		ID       int        `xml:"id,attr"`
-		Operator string     `xml:"operator,attr"`
-		Table    string     `xml:"tableName,attr"`
-		Index    string     `xml:"indexName,attr"`
-		Cost     float64    `xml:"cost,attr"`
-		Rows     int        `xml:"outputRowCount,attr"`
-		Children []planNode `xml:"node"`
-	}
-
-	type explainResult struct {
-		XMLName xml.Name   `xml:"explainResult"`
-		Nodes   []planNode `xml:"node"`
-	}
-
-	// Try structured XML first
-	var resp explainResult
-	if err := xml.Unmarshal([]byte(xmlStr), &resp); err != nil {
-		// If XML parsing fails, return the raw response as a single-node plan
-		return &SQLExplainPlan{
-			Query: query,
-			Nodes: []SQLPlanNode{
-				{
-					ID:       0,
-					Operator: "RAW_RESPONSE",
-					Table:    truncate(string(data), 500),
-				},
-			},
-		}, nil
-	}
-
-	plan := &SQLExplainPlan{Query: query}
-	var convertNodes func(nodes []planNode) []SQLPlanNode
-	convertNodes = func(nodes []planNode) []SQLPlanNode {
-		var result []SQLPlanNode
-		for _, n := range nodes {
-			node := SQLPlanNode{
-				ID:       n.ID,
-				Operator: n.Operator,
-				Table:    n.Table,
-				Index:    n.Index,
-				Cost:     n.Cost,
-				Rows:     n.Rows,
-				Children: convertNodes(n.Children),
-			}
-			result = append(result, node)
-		}
-		return result
-	}
-
-	plan.Nodes = convertNodes(resp.Nodes)
-
-	// Calculate total cost from root nodes
-	for _, n := range plan.Nodes {
-		plan.TotalCost += n.Cost
-	}
-
-	return plan, nil
 }
 
 // --- Enhanced Check Run Results ---

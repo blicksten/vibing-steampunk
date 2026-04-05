@@ -10,7 +10,7 @@ import (
 
 // handleGetCDSImpactAnalysis returns reverse dependencies (where-used) for a CDS view.
 func (s *Server) handleGetCDSImpactAnalysis(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	viewName, ok := request.Params.Arguments["view_name"].(string)
+	viewName, ok := request.GetArguments()["view_name"].(string)
 	if !ok || viewName == "" {
 		return newToolResultError("view_name is required"), nil
 	}
@@ -26,7 +26,7 @@ func (s *Server) handleGetCDSImpactAnalysis(ctx context.Context, request mcp.Cal
 
 // handleGetCDSElementInfo returns metadata for all elements (fields) of a CDS view.
 func (s *Server) handleGetCDSElementInfo(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	viewName, ok := request.Params.Arguments["view_name"].(string)
+	viewName, ok := request.GetArguments()["view_name"].(string)
 	if !ok || viewName == "" {
 		return newToolResultError("view_name is required"), nil
 	}

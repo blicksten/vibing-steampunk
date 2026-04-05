@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -485,19 +486,20 @@ func runGraph(cmd *cobra.Command, args []string) error {
 	direction, _ := cmd.Flags().GetString("direction")
 	depth, _ := cmd.Flags().GetInt("depth")
 
-	// Build object URI
+	// Build object URI (url.PathEscape handles namespaced objects like /UI5/CL_REPOSITORY)
+	encodedName := url.PathEscape(strings.ToLower(name))
 	var objURI string
 	switch objType {
 	case "CLAS":
-		objURI = "/sap/bc/adt/oo/classes/" + strings.ToLower(name)
+		objURI = "/sap/bc/adt/oo/classes/" + encodedName
 	case "PROG":
-		objURI = "/sap/bc/adt/programs/programs/" + strings.ToLower(name)
+		objURI = "/sap/bc/adt/programs/programs/" + encodedName
 	case "INTF":
-		objURI = "/sap/bc/adt/oo/interfaces/" + strings.ToLower(name)
+		objURI = "/sap/bc/adt/oo/interfaces/" + encodedName
 	case "FUGR":
-		objURI = "/sap/bc/adt/functions/groups/" + strings.ToLower(name)
+		objURI = "/sap/bc/adt/functions/groups/" + encodedName
 	default:
-		objURI = "/sap/bc/adt/oo/classes/" + strings.ToLower(name)
+		objURI = "/sap/bc/adt/oo/classes/" + encodedName
 	}
 
 	ctx := context.Background()
@@ -511,7 +513,7 @@ func runGraph(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stderr, "Transaction %s → Program %s\n\n", name, pgm)
 			name = strings.TrimSpace(pgm)
 			objType = "PROG"
-			objURI = "/sap/bc/adt/programs/programs/" + strings.ToLower(name)
+			objURI = "/sap/bc/adt/programs/programs/" + url.PathEscape(strings.ToLower(name))
 		} else {
 			return fmt.Errorf("transaction %s not found in TSTC", name)
 		}

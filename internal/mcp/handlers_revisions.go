@@ -14,18 +14,18 @@ import (
 // --- Version History (Revision) Handlers ---
 
 func (s *Server) handleGetRevisions(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	objectType, _ := request.Params.Arguments["type"].(string)
-	name, _ := request.Params.Arguments["name"].(string)
+	objectType, _ := request.GetArguments()["type"].(string)
+	name, _ := request.GetArguments()["name"].(string)
 
 	if objectType == "" || name == "" {
 		return newToolResultError("type and name are required"), nil
 	}
 
 	opts := &adt.GetSourceOptions{}
-	if include, ok := request.Params.Arguments["include"].(string); ok && include != "" {
+	if include, ok := request.GetArguments()["include"].(string); ok && include != "" {
 		opts.Include = include
 	}
-	if parent, ok := request.Params.Arguments["parent"].(string); ok && parent != "" {
+	if parent, ok := request.GetArguments()["parent"].(string); ok && parent != "" {
 		opts.Parent = parent
 	}
 
@@ -39,7 +39,7 @@ func (s *Server) handleGetRevisions(ctx context.Context, request mcp.CallToolReq
 }
 
 func (s *Server) handleGetRevisionSource(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	versionURI, ok := request.Params.Arguments["version_uri"].(string)
+	versionURI, ok := request.GetArguments()["version_uri"].(string)
 	if !ok || versionURI == "" {
 		return newToolResultError("version_uri is required (from GetRevisions output)"), nil
 	}
@@ -53,10 +53,10 @@ func (s *Server) handleGetRevisionSource(ctx context.Context, request mcp.CallTo
 }
 
 func (s *Server) handleCompareVersions(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	objectType, _ := request.Params.Arguments["type"].(string)
-	name, _ := request.Params.Arguments["name"].(string)
-	version1, _ := request.Params.Arguments["version1_uri"].(string)
-	version2, _ := request.Params.Arguments["version2_uri"].(string)
+	objectType, _ := request.GetArguments()["type"].(string)
+	name, _ := request.GetArguments()["name"].(string)
+	version1, _ := request.GetArguments()["version1_uri"].(string)
+	version2, _ := request.GetArguments()["version2_uri"].(string)
 
 	if objectType == "" || name == "" || version1 == "" {
 		return newToolResultError("type, name, and version1_uri are required"), nil
@@ -66,10 +66,10 @@ func (s *Server) handleCompareVersions(ctx context.Context, request mcp.CallTool
 	}
 
 	opts := &adt.GetSourceOptions{}
-	if include, ok := request.Params.Arguments["include"].(string); ok && include != "" {
+	if include, ok := request.GetArguments()["include"].(string); ok && include != "" {
 		opts.Include = include
 	}
-	if parent, ok := request.Params.Arguments["parent"].(string); ok && parent != "" {
+	if parent, ok := request.GetArguments()["parent"].(string); ok && parent != "" {
 		opts.Parent = parent
 	}
 

@@ -52,13 +52,18 @@ func NewTransportWithClient(cfg *Config, client HTTPDoer) *Transport {
 
 // RequestOptions contains options for an HTTP request.
 type RequestOptions struct {
-	Method           string
-	Headers          map[string]string
-	Query            url.Values
-	Body             []byte
-	ContentType      string
-	Accept           string
-	SkipSAPParams    bool // Skip adding sap-client and sap-language to query
+	Method      string
+	Headers     map[string]string
+	Query       url.Values
+	Body        []byte
+	ContentType string
+	Accept      string
+
+	// OverrideLanguage overrides the global session language for this request.
+	// When set, the sap-language query parameter is set to this value instead
+	// of the configured default. Used by i18n tools to read/write texts in
+	// specific languages without changing the global session language.
+	OverrideLanguage string
 }
 
 // Response wraps an HTTP response with convenience methods.
@@ -78,7 +83,7 @@ func (t *Transport) Request(ctx context.Context, path string, opts *RequestOptio
 	}
 
 	// Build URL
-	reqURL, err := t.buildURLWithOptions(path, opts.Query, opts.SkipSAPParams)
+	reqURL, err := t.buildURL(path, opts.Query, opts.OverrideLanguage)
 	if err != nil {
 		return nil, fmt.Errorf("building URL: %w", err)
 	}
@@ -201,7 +206,7 @@ func (t *Transport) Request(ctx context.Context, path string, opts *RequestOptio
 
 // retryRequest retries a request after CSRF token refresh.
 func (t *Transport) retryRequest(ctx context.Context, path string, opts *RequestOptions) (*Response, error) {
-	reqURL, err := t.buildURL(path, opts.Query)
+	reqURL, err := t.buildURL(path, opts.Query, opts.OverrideLanguage)
 	if err != nil {
 		return nil, fmt.Errorf("building URL: %w", err)
 	}
@@ -316,11 +321,9 @@ func (t *Transport) fetchCSRFToken(ctx context.Context) error {
 }
 
 // buildURL constructs the full URL for an API request.
-func (t *Transport) buildURL(path string, query url.Values) (string, error) {
-	return t.buildURLWithOptions(path, query, false)
-}
-
-func (t *Transport) buildURLWithOptions(path string, query url.Values, skipSAPParams bool) (string, error) {
+// overrideLang, if non-empty, overrides the configured session language for
+// this single request (used by i18n tools to read/write texts per-language).
+func (t *Transport) buildURL(path string, query url.Values, overrideLang ...string) (string, error) {
 	base := strings.TrimSuffix(t.config.BaseURL, "/")
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
@@ -333,14 +336,19 @@ func (t *Transport) buildURLWithOptions(path string, query url.Values, skipSAPPa
 
 	// Merge query parameters
 	q := u.Query()
-	if !skipSAPParams {
-		if t.config.Client != "" {
-			q.Set("sap-client", t.config.Client)
-		}
-		if t.config.Language != "" {
-			q.Set("sap-language", t.config.Language)
-		}
+	if t.config.Client != "" {
+		q.Set("sap-client", t.config.Client)
 	}
+
+	// Use override language if provided, otherwise fall back to config
+	lang := t.config.Language
+	if len(overrideLang) > 0 && overrideLang[0] != "" {
+		lang = overrideLang[0]
+	}
+	if lang != "" {
+		q.Set("sap-language", lang)
+	}
+
 	for k, v := range query {
 		for _, val := range v {
 			q.Add(k, val)
@@ -378,7 +386,7 @@ func (t *Transport) setDefaultHeaders(req *http.Request, opts *RequestOptions) {
 	switch t.config.SessionType {
 	case SessionStateful:
 		req.Header.Set("X-sap-adt-sessiontype", "stateful")
-	case SessionStateless:
+	default:
 		req.Header.Set("X-sap-adt-sessiontype", "stateless")
 	}
 }
@@ -454,7 +462,8 @@ func (e *APIError) IsSessionExpired() bool {
 	msg := strings.ToLower(e.Message)
 	return strings.Contains(msg, "icmenosession") ||
 		strings.Contains(msg, "session timed out") ||
-		strings.Contains(msg, "session no longer exists")
+		strings.Contains(msg, "session no longer exists") ||
+		strings.Contains(msg, "session not found")
 }
 
 // IsNotFoundError checks if an error is an API 404 Not Found error.
@@ -479,4 +488,10 @@ func IsSessionExpiredError(err error) bool {
 		return apiErr.IsSessionExpired()
 	}
 	return false
+}
+
+// Ping sends a lightweight HEAD request to /sap/bc/adt/core/discovery to keep the session alive.
+// It refreshes the CSRF token as a side effect.
+func (t *Transport) Ping(ctx context.Context) error {
+	return t.fetchCSRFToken(ctx)
 }
